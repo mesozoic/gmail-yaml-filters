@@ -5,7 +5,6 @@ from collections import Iterable
 from datetime import datetime
 from itertools import chain
 from lxml import etree
-import sys
 import yaml
 
 
@@ -15,7 +14,6 @@ def construct_yaml_str(self, node):
 
 yaml.Loader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 yaml.SafeLoader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
-
 
 
 class InvalidIdentifier(ValueError):
@@ -135,6 +133,7 @@ class Rule(object):
 
     def add_compound_construction(self, key, compound):
         """
+        >>> rule = Rule()
         >>> rule.add_compound_construction('hasTheWord', {'any': ['foo', 'bar', 'baz']})
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar', 'baz']})
         """
@@ -270,7 +269,6 @@ class RuleSet(set):
 
     def __unicode__(self):
         return etree.tostring(self.to_etree(), pretty_print=True, encoding='utf-8').decode('utf-8')
-
 
 
 if __name__ == '__main__':
