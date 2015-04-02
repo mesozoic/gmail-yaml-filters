@@ -5,6 +5,7 @@ from collections import Iterable
 from datetime import datetime
 from itertools import chain
 from lxml import etree
+import sys
 import yaml
 
 
@@ -41,6 +42,9 @@ class _RuleConstruction(object):
     @classmethod
     def validate_value(cls, value):
         return value
+
+    def __hash__(self):
+        return hash((self.key, self.value))
 
     def __repr__(self):
         return '{0}({1!r}, {2!r})'.format(self.__class__.__name__, self.key, self.value)
@@ -144,10 +148,10 @@ class Rule(object):
             self.add(key, compound['all'])
 
     def add_condition(self, condition):
-        self._conditions.setdefault(condition.key, []).append(condition)
+        self._conditions.setdefault(condition.key, set()).add(condition)
 
     def add_action(self, action):
-        self._actions.setdefault(action.key, []).append(action)
+        self._actions.setdefault(action.key, set()).add(action)
 
     @property
     def conditions(self):
@@ -157,15 +161,15 @@ class Rule(object):
         if self.base_rule:
             data.update(self.base_rule._conditions)
         for key, conditions in self._conditions.iteritems():
-            data.setdefault(key, []).extend(conditions)
-        # each value in data is a list, so we need to flatten it
+            data.setdefault(key, set()).update(conditions)
+        # data maps to a set of conditions, so we need to flatten it
         return list(chain.from_iterable(data.itervalues()))
 
     @property
     def actions(self):
         """Returns the set of all this rule's conditions.
         """
-        # each value in self._actions is a list, so we need to flatten it
+        # self._actions maps to a set of conditions, so we need to flatten it
         return list(chain.from_iterable(self._actions.itervalues()))
 
     @property
@@ -272,7 +276,7 @@ class RuleSet(set):
 
 
 if __name__ == '__main__':
-    with open('levy.yaml') as inputf:
+    with open(sys.argv[1]) as inputf:
         data = yaml.safe_load(inputf.read())
 
     ruleset = RuleSet.from_object(data)
