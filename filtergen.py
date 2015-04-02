@@ -21,6 +21,19 @@ class InvalidIdentifier(ValueError):
     pass
 
 
+class InvalidRuleType(ValueError):
+    pass
+
+
+class KeyMismatch(RuntimeError):
+    def __init__(self, first, second):
+        self.first = first
+        self.second = second
+
+    def __str__(self):
+        return '{0} vs. {1}'.format(repr(self.first), repr(self.second))
+
+
 class _RuleConstruction(object):
     #. Maps kwargs and YAML keys to Google values
     identifier_map = None
@@ -70,14 +83,6 @@ class RuleCondition(_RuleConstruction):
             return value
 
 
-def _or(conditions):
-    return ' OR '.join('({0})'.format(condition) for condition in conditions)
-
-
-def _and(conditions):
-    return ' AND '.join('({0})'.format(condition) for condition in conditions)
-
-
 class RuleAction(_RuleConstruction):
     identifier_map = {
         'label': 'label',
@@ -91,6 +96,14 @@ class RuleAction(_RuleConstruction):
         'delete': 'shouldTrash',
         # TODO: support smart labels / tabs (Personal, Social, etc.)
     }
+
+
+def _or(conditions):
+    return ' OR '.join('({0})'.format(condition) for condition in conditions)
+
+
+def _and(conditions):
+    return ' AND '.join('({0})'.format(condition) for condition in conditions)
 
 
 class Rule(object):
@@ -127,7 +140,7 @@ class Rule(object):
             for actual_value in value:
                 self.add(key, actual_value)
         else:
-            raise ValueError('Unrecognized type for rule construction: {0}'.format(type(value)))
+            raise InvalidRuleType(type(value))
 
     def add_construction(self, key, value):
         try:
@@ -205,22 +218,6 @@ class Rule(object):
     def __repr__(self):
         return '{cls}({data})'.format(self.__class__.__name__, self.data)
 
-    def to_etree(self, parent):
-        entry = etree.SubElement(parent, 'entry')
-        etree.SubElement(entry, 'category', term='filter')
-        etree.SubElement(entry, 'title').text = 'Mail Filter'
-        etree.SubElement(entry, 'id').text = 'tag:mail.google.com,2008:filter:{0}'.format(hash(self))
-        etree.SubElement(entry, 'updated').text = datetime.now().replace(microsecond=0).isoformat() + 'Z'
-        etree.SubElement(entry, 'content')
-        for construct in self.flatten().itervalues():
-            etree.SubElement(
-                entry,
-                '{http://schemas.google.com/apps/2006}property',
-                name=construct.key,
-                value=unicode(construct.value),
-            )
-        return entry
-
 
 class RuleSet(set):
     more_key = 'more'
@@ -258,21 +255,33 @@ class RuleSet(set):
             ruleset.update(cls.from_object(data, base_rule=base_rule))
         return ruleset
 
-    def to_etree(self):
-        xml = etree.Element(
-            'feed',
-            nsmap={
-                None: 'http://www.w3.org/2005/Atom',
-                'apps': 'http://schemas.google.com/apps/2006',
-            },
-        )
-        etree.SubElement(xml, 'title').text = 'Mail Filters'
-        for rule in self:
-            rule.to_etree(parent=xml)
-        return xml
 
-    def __unicode__(self):
-        return etree.tostring(self.to_etree(), pretty_print=True, encoding='utf-8').decode('utf-8')
+def ruleset_to_etree(ruleset):
+    xml = etree.Element('feed', nsmap={
+        None: 'http://www.w3.org/2005/Atom',
+        'apps': 'http://schemas.google.com/apps/2006',
+    })
+    etree.SubElement(xml, 'title').text = 'Mail Filters'
+    for rule in ruleset:
+        entry = etree.SubElement(xml, 'entry')
+        etree.SubElement(entry, 'category', term='filter')
+        etree.SubElement(entry, 'title').text = 'Mail Filter'
+        etree.SubElement(entry, 'id').text = 'tag:mail.google.com,2008:filter:{0}'.format(abs(hash(rule)))
+        etree.SubElement(entry, 'updated').text = datetime.now().replace(microsecond=0).isoformat() + 'Z'
+        etree.SubElement(entry, 'content')
+        for construct in rule.flatten().itervalues():
+            etree.SubElement(
+                entry,
+                '{http://schemas.google.com/apps/2006}property',
+                name=construct.key,
+                value=unicode(construct.value),
+            )
+    return xml
+
+
+def ruleset_to_xml(ruleset):
+    dom = ruleset_to_etree(ruleset)
+    return etree.tostring(dom, pretty_print=True, encoding='utf8').decode('utf8')
 
 
 if __name__ == '__main__':
@@ -280,4 +289,4 @@ if __name__ == '__main__':
         data = yaml.safe_load(inputf.read())
 
     ruleset = RuleSet.from_object(data)
-    print(unicode(ruleset))
+    print(ruleset_to_xml(ruleset))
