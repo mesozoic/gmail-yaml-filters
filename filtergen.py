@@ -93,10 +93,9 @@ class RuleCondition(_RuleConstruction):
 
     @classmethod
     def join_by(cls, joiner, conditions):
-        print('join_by', repr(joiner), repr(conditions), file=sys.stderr)
         return joiner.join(
             '({0})'.format(cls.validate_value(condition))
-            for condition in conditions
+            for condition in sorted(conditions)
         )
 
 
@@ -140,19 +139,19 @@ class Rule(object):
 
     >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
     >>> rule.flatten()
-    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("great discount") AND ("cheap airfare")')}
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("cheap airfare") AND ("great discount")')}
 
     You can also use an "all" hash to achieve the same effect:
 
     >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
     >>> rule.flatten()
-    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("great discount") AND ("cheap airfare")')}
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("cheap airfare") AND ("great discount")')}
 
     ...or an "any" hash to get conditions OR'd together:
 
     >>> rule = Rule({'from': {'any': ['bill@msft.com', 'steve@msft.com', 'satya@msft.com']}})
     >>> rule.flatten()
-    {u'from': RuleCondition(u'from', u'("bill@msft.com") OR ("steve@msft.com") OR ("satya@msft.com")')}
+    {u'from': RuleCondition(u'from', u'("bill@msft.com") OR ("satya@msft.com") OR ("steve@msft.com")')}
     """
 
     def __init__(self, data=None, base_rule=None):
@@ -252,10 +251,27 @@ class Rule(object):
         return hash(tuple(self.data))
 
     def __repr__(self):
-        return '{0}({1})'.format(self.__class__.__name__, self.data)
+        rule_data = ', '.join('{0}={1!r}'.format(*item) for item in sorted(self.data.iteritems()))
+        return '{0}({1})'.format(self.__class__.__name__, rule_data)
 
 
 class RuleSet(set):
+    """
+    Contains a set of Rule instances.
+
+    >>> def sample_rule(name):
+    ...     return {'from': '{0}@microsoft.com'.format(name), 'trash': True}
+    >>> RuleSet.from_object(sample_rule('bill')) # doctest: +NORMALIZE_WHITESPACE
+    RuleSet([Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
+                  shouldTrash=[RuleAction(u'shouldTrash', u'true')])])
+
+    >>> RuleSet.from_object([sample_rule('bill'), sample_rule('steve')]) # doctest: +NORMALIZE_WHITESPACE
+    RuleSet([Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
+                  shouldTrash=[RuleAction(u'shouldTrash', u'true')]),
+             Rule(from=[RuleCondition(u'from', u'"steve@microsoft.com"')],
+                  shouldTrash=[RuleAction(u'shouldTrash', u'true')])])
+    """
+
     more_key = 'more'
 
     @classmethod
