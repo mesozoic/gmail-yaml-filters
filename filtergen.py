@@ -39,8 +39,14 @@ class KeyMismatch(RuntimeError):
 class _RuleConstruction(object):
     # Maps kwargs and YAML keys to Google values
     identifier_map = None
+    # Maps special keys to tuples of key/value format strings
+    formatter_map = {}
 
     def __init__(self, key, value):
+        if key in self.formatter_map:
+            original = dict(key=key, value=value)
+            value = self.formatter_map[key][1].format(**original)
+            key = self.formatter_map[key][0].format(**original)
         self.key = self.validate_key(key)
         self.value = self.validate_value(value)
 
@@ -79,6 +85,11 @@ class RuleCondition(_RuleConstruction):
     >>> cond = RuleCondition('match', 'from:bill@microsoft.com')
     >>> cond.key
     u'hasTheWord'
+
+    We implement a 'list:' shortcut:
+
+    >>> RuleCondition('list', 'exec.msft.com')
+    RuleCondition(u'hasTheWord', u'"list:(exec.msft.com)"')
     """
 
     identifier_map = {
@@ -90,6 +101,10 @@ class RuleCondition(_RuleConstruction):
         'does_not_have': 'doesNotHaveTheWord',
         'missing': 'doesNotHaveTheWord',
         'no_match': 'doesNotHaveTheWord',
+    }
+
+    formatter_map = {
+        'list': ('has', 'list:({value})'),
     }
 
     @classmethod
@@ -278,19 +293,20 @@ class RuleSet(set):
 
     >>> def sample_rule(name):
     ...     return {'from': '{0}@microsoft.com'.format(name), 'trash': True}
-    >>> RuleSet.from_object(sample_rule('bill'))
+    >>> ruleset = RuleSet.from_object(sample_rule('bill'))
+    >>> sorted(ruleset)
     ... # doctest: +NORMALIZE_WHITESPACE
-    RuleSet([Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
-                  shouldTrash=[RuleAction(u'shouldTrash', u'true')])])
+    [Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
+          shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
 
     Or using lists of dictionaries:
 
-    >>> RuleSet.from_object([sample_rule('bill'), sample_rule('steve')])
+    >>> sorted(RuleSet.from_object([sample_rule('bill'), sample_rule('steve')]))
     ... # doctest: +NORMALIZE_WHITESPACE
-    RuleSet([Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
-                  shouldTrash=[RuleAction(u'shouldTrash', u'true')]),
-             Rule(from=[RuleCondition(u'from', u'"steve@microsoft.com"')],
-                  shouldTrash=[RuleAction(u'shouldTrash', u'true')])])
+    [Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
+          shouldTrash=[RuleAction(u'shouldTrash', u'true')]),
+     Rule(from=[RuleCondition(u'from', u'"steve@microsoft.com"')],
+          shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
 
     Or even with loops:
 
