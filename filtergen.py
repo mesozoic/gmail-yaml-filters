@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from collections import Iterable
 from datetime import datetime
+from functools import total_ordering
 from itertools import chain
 from lxml import etree
 import sys
@@ -34,6 +35,7 @@ class KeyMismatch(RuntimeError):
         return '{0} vs. {1}'.format(repr(self.first), repr(self.second))
 
 
+@total_ordering
 class _RuleConstruction(object):
     # Maps kwargs and YAML keys to Google values
     identifier_map = None
@@ -61,6 +63,12 @@ class _RuleConstruction(object):
 
     def __repr__(self):
         return '{0}({1!r}, {2!r})'.format(self.__class__.__name__, self.key, self.value)
+
+    def __eq__(self, other):
+        return (self.key, self.value) == (other.key, other.value)
+
+    def __lt__(self, other):
+        return (self.key, self.value) < (other.key, other.value)
 
 
 class RuleCondition(_RuleConstruction):
@@ -159,7 +167,10 @@ class Rule(object):
         self._conditions = {}
         # Maps the canonical Google rule key (e.g. hasTheWord) to a list of values (AND'd)
         self._actions = {}
-        self.base_rule = base_rule
+        if base_rule:
+            for key, constructs in base_rule.data.iteritems():
+                for construct in constructs:
+                    self.add(key, construct.value)
         if data:
             self.update(data)
 
@@ -205,13 +216,8 @@ class Rule(object):
     def conditions(self):
         """Returns a combined set of the base rule's conditions and this rule's conditions.
         """
-        data = {}
-        if self.base_rule:
-            data.update(self.base_rule._conditions)
-        for key, conditions in self._conditions.iteritems():
-            data.setdefault(key, set()).update(conditions)
         # data maps to a set of conditions, so we need to flatten it
-        return list(chain.from_iterable(data.itervalues()))
+        return list(chain.from_iterable(self._conditions.itervalues()))
 
     @property
     def actions(self):
@@ -254,25 +260,58 @@ class Rule(object):
         rule_data = ', '.join('{0}={1!r}'.format(*item) for item in sorted(self.data.iteritems()))
         return '{0}({1})'.format(self.__class__.__name__, rule_data)
 
+    def apply_format(self, **format_vars):
+        """Uses the same semantics as str.format to interpolate variables into
+        the values of conditions and actions.
+        """
+        for action in self.actions:
+            action.value = action.value.format(**format_vars)
+        for condition in self.conditions:
+            condition.value = condition.value.format(**format_vars)
+
 
 class RuleSet(set):
     """
     Contains a set of Rule instances.
 
+    You can create these using dictionaries:
+
     >>> def sample_rule(name):
     ...     return {'from': '{0}@microsoft.com'.format(name), 'trash': True}
-    >>> RuleSet.from_object(sample_rule('bill')) # doctest: +NORMALIZE_WHITESPACE
+    >>> RuleSet.from_object(sample_rule('bill'))
+    ... # doctest: +NORMALIZE_WHITESPACE
     RuleSet([Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
                   shouldTrash=[RuleAction(u'shouldTrash', u'true')])])
 
-    >>> RuleSet.from_object([sample_rule('bill'), sample_rule('steve')]) # doctest: +NORMALIZE_WHITESPACE
+    Or using lists of dictionaries:
+
+    >>> RuleSet.from_object([sample_rule('bill'), sample_rule('steve')])
+    ... # doctest: +NORMALIZE_WHITESPACE
     RuleSet([Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
                   shouldTrash=[RuleAction(u'shouldTrash', u'true')]),
              Rule(from=[RuleCondition(u'from', u'"steve@microsoft.com"')],
                   shouldTrash=[RuleAction(u'shouldTrash', u'true')])])
+
+    Or even with loops:
+
+    >>> ruleset = RuleSet.from_object({
+    ...     'for_each': ['bill', 'steve', 'satya'],
+    ...     'rule': {
+    ...         'from': '{item}@msft.com',
+    ...         'star': True,
+    ...         'important': True,
+    ...     }
+    ... })
+    >>> sorted(rule.conditions for rule in ruleset)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    [[RuleCondition(u'from', u'"bill@msft.com"')],
+     [RuleCondition(u'from', u'"satya@msft.com"')],
+     [RuleCondition(u'from', u'"steve@msft.com"')]]
     """
 
     more_key = 'more'
+    foreach_key = 'for_each'
+    foreach_rule_key = 'rule'
 
     @classmethod
     def from_object(cls, obj, base_rule=None):
@@ -287,6 +326,9 @@ class RuleSet(set):
 
     @classmethod
     def from_dict(cls, data, base_rule=None):
+        if cls.foreach_key in data:
+            return cls.from_foreach_dict(data, base_rule=base_rule)
+
         try:
             child_rule_data = data.pop(cls.more_key)
         except KeyError:
@@ -305,6 +347,19 @@ class RuleSet(set):
         ruleset = cls()
         for data in iterable:
             ruleset.update(cls.from_object(data, base_rule=base_rule))
+        return ruleset
+
+    @classmethod
+    def from_foreach_dict(cls, data, base_rule=None):
+        if set(data.keys()) != set([cls.foreach_key, cls.foreach_rule_key]):
+            raise InvalidIdentifier(data.keys())
+
+        ruleset = cls()
+        for index, item in enumerate(data[cls.foreach_key]):
+            item_ruleset = cls.from_object(data[cls.foreach_rule_key])
+            for rule in item_ruleset:
+                rule.apply_format(index=index, item=item)
+            ruleset.update(item_ruleset)
         return ruleset
 
 
