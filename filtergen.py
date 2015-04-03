@@ -35,7 +35,7 @@ class KeyMismatch(RuntimeError):
 
 
 class _RuleConstruction(object):
-    #. Maps kwargs and YAML keys to Google values
+    # Maps kwargs and YAML keys to Google values
     identifier_map = None
 
     def __init__(self, key, value):
@@ -64,6 +64,15 @@ class _RuleConstruction(object):
 
 
 class RuleCondition(_RuleConstruction):
+    """
+    >>> cond = RuleCondition('from', 'bill@microsoft.com')
+    >>> cond.key
+    u'from'
+    >>> cond = RuleCondition('match', 'from:bill@microsoft.com')
+    >>> cond.key
+    u'hasTheWord'
+    """
+
     identifier_map = {
         'from': 'from',
         'to': 'to',
@@ -82,8 +91,20 @@ class RuleCondition(_RuleConstruction):
         else:
             return value
 
+    @classmethod
+    def join_by(cls, joiner, conditions):
+        print('join_by', repr(joiner), repr(conditions), file=sys.stderr)
+        return joiner.join(
+            '({0})'.format(cls.validate_value(condition))
+            for condition in conditions
+        )
+
 
 class RuleAction(_RuleConstruction):
+    """
+    >>> RuleAction('important', True)
+    RuleAction(u'shouldAlwaysMarkAsImportant', u'true')
+    """
     identifier_map = {
         'label': 'label',
         'important': 'shouldAlwaysMarkAsImportant',
@@ -97,21 +118,47 @@ class RuleAction(_RuleConstruction):
         # TODO: support smart labels / tabs (Personal, Social, etc.)
     }
 
-
-def _or(conditions):
-    return ' OR '.join('({0})'.format(condition) for condition in conditions)
-
-
-def _and(conditions):
-    return ' AND '.join('({0})'.format(condition) for condition in conditions)
+    @classmethod
+    def validate_value(cls, value):
+        if isinstance(value, bool):
+            return unicode(value).lower()
+        else:
+            return value
 
 
 class Rule(object):
+    """
+    Defines a set of conditions and a set of actions to apply to those conditions.
+
+    >>> rule = Rule({'from': 'bill@microsoft.com', 'delete': True})
+    >>> rule.conditions
+    [RuleCondition(u'from', u'"bill@microsoft.com"')]
+    >>> rule.actions
+    [RuleAction(u'shouldTrash', u'true')]
+
+    You can pass in a list of values, and they'll be AND'd together:
+
+    >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
+    >>> rule.flatten()
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("great discount") AND ("cheap airfare")')}
+
+    You can also use an "all" hash to achieve the same effect:
+
+    >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
+    >>> rule.flatten()
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("great discount") AND ("cheap airfare")')}
+
+    ...or an "any" hash to get conditions OR'd together:
+
+    >>> rule = Rule({'from': {'any': ['bill@msft.com', 'steve@msft.com', 'satya@msft.com']}})
+    >>> rule.flatten()
+    {u'from': RuleCondition(u'from', u'("bill@msft.com") OR ("steve@msft.com") OR ("satya@msft.com")')}
+    """
 
     def __init__(self, data=None, base_rule=None):
-        #. Maps the canonical Google rule key (e.g. hasTheWord) to a list of values (AND'd)
+        # Maps the canonical Google rule key (e.g. hasTheWord) to a list of values (AND'd)
         self._conditions = {}
-        #. Maps the canonical Google rule key (e.g. hasTheWord) to a list of values (AND'd)
+        # Maps the canonical Google rule key (e.g. hasTheWord) to a list of values (AND'd)
         self._actions = {}
         self.base_rule = base_rule
         if data:
@@ -122,20 +169,10 @@ class Rule(object):
             self.add(key, value)
 
     def add(self, key, value):
-        if isinstance(value, RuleCondition):
-            if key != value.key:
-                raise ValueError('Key mismatch: {0!r}, {1!r}'.format(key, value.key))
-            self.add_condition(value)
-        elif isinstance(value, RuleAction):
-            if key != value.key:
-                raise ValueError('Key mismatch: {0!r}, {1!r}'.format(key, value.key))
-            self.add_action(value)
-        elif isinstance(value, basestring):
+        if isinstance(value, (bool, basestring)):
             self.add_construction(key, value)
         elif isinstance(value, dict):
             self.add_compound_construction(key, value)
-        elif isinstance(value, bool):
-            self.add(key, str(value).lower())  # google wants 'true' or 'false'
         elif isinstance(value, Iterable):
             for actual_value in value:
                 self.add(key, actual_value)
@@ -155,8 +192,7 @@ class Rule(object):
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar', 'baz']})
         """
         if 'any' in compound:
-            any_conditions = _or(compound['any'])
-            self.add(key, any_conditions)
+            self.add(key, RuleCondition.join_by(' OR ', compound['any']))
         if 'all' in compound:
             self.add(key, compound['all'])
 
@@ -209,14 +245,14 @@ class Rule(object):
             if len(constructs) == 1:
                 flattened[key] = construct_class(key, constructs[0].value)
             else:
-                flattened[key] = construct_class(key, _and(c.value for c in constructs))
+                flattened[key] = construct_class(key, RuleCondition.join_by(' AND ', [c.value for c in constructs]))
         return flattened
 
     def __hash__(self):
         return hash(tuple(self.data))
 
     def __repr__(self):
-        return '{cls}({data})'.format(self.__class__.__name__, self.data)
+        return '{0}({1})'.format(self.__class__.__name__, self.data)
 
 
 class RuleSet(set):
