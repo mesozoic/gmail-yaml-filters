@@ -43,12 +43,21 @@ class _RuleConstruction(object):
     formatter_map = {}
 
     def __init__(self, key, value):
-        if key in self.formatter_map:
+        key, value = self.remap_key_and_value(key, value)
+        key = self.validate_key(key)
+        value = self.validate_value(key, value)
+        self.key = key
+        self.value = value
+
+    @classmethod
+    def remap_key_and_value(cls, key, value):
+        if key in cls.formatter_map:
             original = dict(key=key, value=value)
-            value = self.formatter_map[key][1].format(**original)
-            key = self.formatter_map[key][0].format(**original)
-        self.key = self.validate_key(key)
-        self.value = self.validate_value(value)
+            key_fmt, value_fmt = cls.formatter_map[key]
+            key = key_fmt.format(**original)
+            value = value_fmt.format(**original)
+
+        return key, value
 
     @classmethod
     def validate_key(cls, key):
@@ -61,7 +70,7 @@ class _RuleConstruction(object):
                 raise InvalidIdentifier(repr(key))
 
     @classmethod
-    def validate_value(cls, value):
+    def validate_value(cls, key, value):
         return value
 
     def __hash__(self):
@@ -108,7 +117,7 @@ class RuleCondition(_RuleConstruction):
     }
 
     @classmethod
-    def validate_value(cls, value):
+    def validate_value(cls, key, value):
         if '"' not in value:
             return '"{0}"'.format(value)
         else:
@@ -117,7 +126,7 @@ class RuleCondition(_RuleConstruction):
     @classmethod
     def join_by(cls, joiner, conditions):
         return joiner.join(
-            '({0})'.format(cls.validate_value(condition))
+            '({0})'.format(cls.validate_value(None, condition))
             for condition in sorted(conditions)
         )
 
@@ -141,7 +150,7 @@ class RuleAction(_RuleConstruction):
     }
 
     @classmethod
-    def validate_value(cls, value):
+    def validate_value(cls, key, value):
         if isinstance(value, bool):
             return unicode(value).lower()
         else:
@@ -182,10 +191,7 @@ class Rule(object):
         self._conditions = {}
         # Maps the canonical Google rule key (e.g. hasTheWord) to a list of values (AND'd)
         self._actions = {}
-        if base_rule:
-            for key, constructs in base_rule.data.iteritems():
-                for construct in constructs:
-                    self.add(key, construct.value)
+        self.base_rule = base_rule
         if data:
             self.update(data)
 
@@ -248,8 +254,12 @@ class Rule(object):
         the rule's conditions and actions.
         """
         data = {}
-        for construct in chain(self.conditions, self.actions):
-            data.setdefault(construct.key, []).append(construct)
+        if self.base_rule:
+            data.update(self.base_rule.data)
+        for condition in self.conditions:
+            data.setdefault(condition.key, []).append(condition)
+        for action in self.actions:
+            data[action.key] = [action]  # you can only take a given action _once_
         return data
 
     def flatten(self):
@@ -386,6 +396,8 @@ def ruleset_to_etree(ruleset):
     })
     etree.SubElement(xml, 'title').text = 'Mail Filters'
     for rule in ruleset:
+        if not rule.actions:
+            continue
         entry = etree.SubElement(xml, 'entry')
         etree.SubElement(entry, 'category', term='filter')
         etree.SubElement(entry, 'title').text = 'Mail Filter'
