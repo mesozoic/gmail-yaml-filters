@@ -160,6 +160,7 @@ class RuleAction(_RuleConstruction):
             return value
 
 
+@total_ordering
 class Rule(object):
     """
     Defines a set of conditions and a set of actions to apply to those conditions.
@@ -197,6 +198,16 @@ class Rule(object):
         self.base_rule = base_rule
         if data:
             self.update(data)
+
+    def __repr__(self):
+        rule_data = ', '.join('{0}={1!r}'.format(*item) for item in sorted(self.data.iteritems()))
+        return '{0}({1})'.format(self.__class__.__name__, rule_data)
+
+    def __eq__(self, other):
+        return self.data == other.data
+
+    def __lt__(self, other):
+        return self.data < other.data
 
     def update(self, data):
         for key, value in dict(data).iteritems():
@@ -288,10 +299,6 @@ class Rule(object):
             else:
                 flattened[key] = construct_class(key, RuleCondition.join_by(' AND ', [c.value for c in constructs]))
         return flattened
-
-    def __repr__(self):
-        rule_data = ', '.join('{0}={1!r}'.format(*item) for item in sorted(self.data.iteritems()))
-        return '{0}({1})'.format(self.__class__.__name__, rule_data)
 
     def apply_format(self, **format_vars):
         """Uses the same semantics as str.format to interpolate variables into
@@ -431,7 +438,7 @@ def ruleset_to_etree(ruleset):
         'apps': 'http://schemas.google.com/apps/2006',
     })
     etree.SubElement(xml, 'title').text = 'Mail Filters'
-    for rule in ruleset:
+    for rule in sorted(ruleset):
         if not rule.actions:
             continue
         entry = etree.SubElement(xml, 'entry')
