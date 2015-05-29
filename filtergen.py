@@ -73,6 +73,9 @@ class _RuleConstruction(object):
     def validate_value(cls, key, value):
         return value
 
+    def apply_format(self, **format_vars):
+        self.value = self.value.format(**format_vars)
+
     def __hash__(self):
         return hash((self.key, self.value))
 
@@ -235,17 +238,25 @@ class Rule(object):
 
     @property
     def conditions(self):
-        """Returns a combined set of the base rule's conditions and this rule's conditions.
+        """Returns a list of this rule's conditions.
         """
-        # data maps to a set of conditions, so we need to flatten it
-        return list(chain.from_iterable(self._conditions.itervalues()))
+        return sorted(
+            data_value
+            for data_key, data_values in self.data.iteritems()
+            for data_value in data_values
+            if isinstance(data_value, RuleCondition)
+        )
 
     @property
     def actions(self):
-        """Returns the set of all this rule's conditions.
+        """Returns a list of all this rule's conditions.
         """
-        # self._actions maps to a set of conditions, so we need to flatten it
-        return list(chain.from_iterable(self._actions.itervalues()))
+        return sorted(
+            data_value
+            for data_key, data_values in self.data.iteritems()
+            for data_value in data_values
+            if isinstance(data_value, RuleAction)
+        )
 
     @property
     def data(self):
@@ -256,9 +267,9 @@ class Rule(object):
         data = {}
         if self.base_rule:
             data.update(self.base_rule.data)
-        for condition in self.conditions:
+        for condition in list(chain.from_iterable(self._conditions.itervalues())):
             data.setdefault(condition.key, []).append(condition)
-        for action in self.actions:
+        for action in list(chain.from_iterable(self._actions.itervalues())):
             data[action.key] = [action]  # you can only take a given action _once_
         return data
 
@@ -278,9 +289,6 @@ class Rule(object):
                 flattened[key] = construct_class(key, RuleCondition.join_by(' AND ', [c.value for c in constructs]))
         return flattened
 
-    def __hash__(self):
-        return hash(tuple(self.data))
-
     def __repr__(self):
         rule_data = ', '.join('{0}={1!r}'.format(*item) for item in sorted(self.data.iteritems()))
         return '{0}({1})'.format(self.__class__.__name__, rule_data)
@@ -289,10 +297,10 @@ class Rule(object):
         """Uses the same semantics as str.format to interpolate variables into
         the values of conditions and actions.
         """
-        for action in self.actions:
-            action.value = action.value.format(**format_vars)
-        for condition in self.conditions:
-            condition.value = condition.value.format(**format_vars)
+        for construction_dict in (self._actions, self._conditions):
+            for construction_key, construction_objs in construction_dict.iteritems():
+                for construction in construction_objs:
+                    construction.apply_format(**format_vars)
 
 
 class RuleSet(set):
@@ -318,21 +326,45 @@ class RuleSet(set):
      Rule(from=[RuleCondition(u'from', u'"steve@microsoft.com"')],
           shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
 
+    Or with nested conditions:
+
+    >>> ruleset = RuleSet.from_object({
+    ...     'from': 'steve@aapl.com',
+    ...     'archive': True,
+    ...     'more': {
+    ...         'subject': 'stop ignoring me',
+    ...         'archive': False,
+    ...     }
+    ... })
+    >>> sorted(ruleset)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    [Rule(from=[RuleCondition(u'from', u'"steve@aapl.com"')],
+          shouldArchive=[RuleAction(u'shouldArchive', u'true')]),
+     Rule(from=[RuleCondition(u'from', u'"steve@aapl.com"')],
+          shouldArchive=[RuleAction(u'shouldArchive', u'false')],
+          subject=[RuleCondition(u'subject', u'"stop ignoring me"')])]
+
     Or even with loops:
 
     >>> ruleset = RuleSet.from_object({
-    ...     'for_each': ['bill', 'steve', 'satya'],
+    ...     'for_each': ['steve', 'jony', 'tim'],
     ...     'rule': {
-    ...         'from': '{item}@msft.com',
+    ...         'from': '{item}@aapl.com',
     ...         'star': True,
     ...         'important': True,
+    ...         'more': [
+    ...             {'label': 'everyone', 'to': 'everyone@aapl.com'},
+    ...         ]
     ...     }
     ... })
     >>> sorted(rule.conditions for rule in ruleset)
     ... # doctest: +NORMALIZE_WHITESPACE
-    [[RuleCondition(u'from', u'"bill@msft.com"')],
-     [RuleCondition(u'from', u'"satya@msft.com"')],
-     [RuleCondition(u'from', u'"steve@msft.com"')]]
+    [[RuleCondition(u'from', u'"jony@aapl.com"')],
+     [RuleCondition(u'from', u'"jony@aapl.com"'), RuleCondition(u'to', u'"everyone@aapl.com"')],
+     [RuleCondition(u'from', u'"steve@aapl.com"')],
+     [RuleCondition(u'from', u'"steve@aapl.com"'), RuleCondition(u'to', u'"everyone@aapl.com"')],
+     [RuleCondition(u'from', u'"tim@aapl.com"')],
+     [RuleCondition(u'from', u'"tim@aapl.com"'), RuleCondition(u'to', u'"everyone@aapl.com"')]]
     """
 
     more_key = 'more'
@@ -355,16 +387,19 @@ class RuleSet(set):
         if cls.foreach_key in data:
             return cls.from_foreach_dict(data, base_rule=base_rule)
 
+        data = data.copy()
+
         try:
             child_rule_data = data.pop(cls.more_key)
         except KeyError:
-            child_rule_data = []
+            child_rule_data = None
 
-        base_rule = Rule(data, base_rule=base_rule)
-
+        new_rule = Rule(data, base_rule=base_rule)
         ruleset = cls()
-        ruleset.add(base_rule)
-        ruleset.update(cls.from_object(child_rule_data, base_rule=base_rule))
+        ruleset.add(new_rule)
+
+        if child_rule_data:
+            ruleset.update(cls.from_object(child_rule_data, base_rule=new_rule))
 
         return ruleset
 
@@ -382,10 +417,11 @@ class RuleSet(set):
 
         ruleset = cls()
         for index, item in enumerate(data[cls.foreach_key]):
-            item_ruleset = cls.from_object(data[cls.foreach_rule_key])
+            item_ruleset = cls.from_object(data[cls.foreach_rule_key], base_rule=base_rule)
             for rule in item_ruleset:
                 rule.apply_format(index=index, item=item)
             ruleset.update(item_ruleset)
+
         return ruleset
 
 
