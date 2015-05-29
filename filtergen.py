@@ -18,6 +18,12 @@ yaml.Loader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 yaml.SafeLoader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 
 
+def quote_value_if_necessary(value):
+    if ' ' in value and '"' not in value:
+        return '"{0}"'.format(value)
+    return value
+
+
 class InvalidIdentifier(ValueError):
     pass
 
@@ -42,10 +48,11 @@ class _RuleConstruction(object):
     # Maps special keys to tuples of key/value format strings
     formatter_map = {}
 
-    def __init__(self, key, value):
+    def __init__(self, key, value, validate_value=True):
         key, value = self.remap_key_and_value(key, value)
         key = self.validate_key(key)
-        value = self.validate_value(key, value)
+        if validate_value:
+            value = self.validate_value(key, value)
         self.key = key
         self.value = value
 
@@ -101,7 +108,7 @@ class RuleCondition(_RuleConstruction):
     We implement a 'list:' shortcut:
 
     >>> RuleCondition('list', 'exec.msft.com')
-    RuleCondition(u'hasTheWord', u'"list:(exec.msft.com)"')
+    RuleCondition(u'hasTheWord', u'list:(exec.msft.com)')
     """
 
     identifier_map = {
@@ -121,17 +128,21 @@ class RuleCondition(_RuleConstruction):
 
     @classmethod
     def validate_value(cls, key, value):
-        if '"' not in value:
-            return '"{0}"'.format(value)
-        else:
-            return value
+        if isinstance(value, basestring):
+            value = quote_value_if_necessary(value)
+        return value
 
     @classmethod
-    def join_by(cls, joiner, conditions):
-        return joiner.join(
-            '({0})'.format(cls.validate_value(None, condition))
-            for condition in sorted(conditions)
-        )
+    def join_by(cls, joiner, values):
+        return joiner.join(cls.validate_value(None, value) for value in sorted(values))
+
+    @classmethod
+    def and_(cls, key, values):
+        return cls(key, cls.join_by(' AND ', values), validate_value=False)
+
+    @classmethod
+    def or_(cls, key, values):
+        return cls(key, cls.join_by(' OR ', values), validate_value=False)
 
 
 class RuleAction(_RuleConstruction):
@@ -167,27 +178,35 @@ class Rule(object):
 
     >>> rule = Rule({'from': 'bill@microsoft.com', 'delete': True})
     >>> rule.conditions
-    [RuleCondition(u'from', u'"bill@microsoft.com"')]
+    [RuleCondition(u'from', u'bill@microsoft.com')]
     >>> rule.actions
     [RuleAction(u'shouldTrash', u'true')]
+
+    Strings with spaces in them will get quoted, but strings without spaces won't:
+
+    >>> rule = Rule({'has': 'great discount', 'to': '-bill@microsoft.com'})
+    >>> sorted(rule.flatten().items())
+    ... # doctest: +NORMALIZE_WHITESPACE
+    [(u'hasTheWord', RuleCondition(u'hasTheWord', u'"great discount"')),
+     (u'to', RuleCondition(u'to', u'-bill@microsoft.com'))]
 
     You can pass in a list of values, and they'll be AND'd together:
 
     >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
     >>> rule.flatten()
-    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("cheap airfare") AND ("great discount")')}
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'"cheap airfare" AND "great discount"')}
 
     You can also use an "all" hash to achieve the same effect:
 
     >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
     >>> rule.flatten()
-    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("cheap airfare") AND ("great discount")')}
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'"cheap airfare" AND "great discount"')}
 
     ...or an "any" hash to get conditions OR'd together:
 
     >>> rule = Rule({'from': {'any': ['bill@msft.com', 'steve@msft.com', 'satya@msft.com']}})
     >>> rule.flatten()
-    {u'from': RuleCondition(u'from', u'("bill@msft.com") OR ("satya@msft.com") OR ("steve@msft.com")')}
+    {u'from': RuleCondition(u'from', u'bill@msft.com OR satya@msft.com OR steve@msft.com')}
     """
 
     def __init__(self, data=None, base_rule=None):
@@ -213,7 +232,7 @@ class Rule(object):
         for key, value in dict(data).iteritems():
             self.add(key, value)
 
-    def add(self, key, value):
+    def add(self, key, value, validate=True):
         if isinstance(value, (bool, basestring)):
             self.add_construction(key, value)
         elif isinstance(value, dict):
@@ -232,14 +251,17 @@ class Rule(object):
 
     def add_compound_construction(self, key, compound):
         """
+        Add an "any" or "all" (or combination thereof).
+
         >>> rule = Rule()
         >>> rule.add_compound_construction('hasTheWord', {'any': ['foo', 'bar', 'baz']})
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar', 'baz']})
+        >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar'], 'any': ['goo', 'gar']})
         """
         if 'any' in compound:
-            self.add(key, RuleCondition.join_by(' OR ', compound['any']))
+            self.add_condition(RuleCondition.or_(key, compound['any']))
         if 'all' in compound:
-            self.add(key, compound['all'])
+            self.add_condition(RuleCondition.and_(key, compound['all']))
 
     def add_condition(self, condition):
         self._conditions.setdefault(condition.key, set()).add(condition)
@@ -295,9 +317,9 @@ class Rule(object):
                 continue
             construct_class = constructs[0].__class__  # we shouldn't ever mix
             if len(constructs) == 1:
-                flattened[key] = construct_class(key, constructs[0].value)
+                flattened[key] = construct_class(key, constructs[0].value, validate_value=False)
             else:
-                flattened[key] = construct_class(key, RuleCondition.join_by(' AND ', [c.value for c in constructs]))
+                flattened[key] = construct_class.and_(key, sorted(c.value for c in constructs))
         return flattened
 
     def apply_format(self, **format_vars):
@@ -321,16 +343,16 @@ class RuleSet(set):
     >>> ruleset = RuleSet.from_object(sample_rule('bill'))
     >>> sorted(ruleset)
     ... # doctest: +NORMALIZE_WHITESPACE
-    [Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
+    [Rule(from=[RuleCondition(u'from', u'bill@microsoft.com')],
           shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
 
     Or using lists of dictionaries:
 
     >>> sorted(RuleSet.from_object([sample_rule('bill'), sample_rule('steve')]))
     ... # doctest: +NORMALIZE_WHITESPACE
-    [Rule(from=[RuleCondition(u'from', u'"bill@microsoft.com"')],
+    [Rule(from=[RuleCondition(u'from', u'bill@microsoft.com')],
           shouldTrash=[RuleAction(u'shouldTrash', u'true')]),
-     Rule(from=[RuleCondition(u'from', u'"steve@microsoft.com"')],
+     Rule(from=[RuleCondition(u'from', u'steve@microsoft.com')],
           shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
 
     Or with nested conditions:
@@ -345,9 +367,9 @@ class RuleSet(set):
     ... })
     >>> sorted(ruleset)
     ... # doctest: +NORMALIZE_WHITESPACE
-    [Rule(from=[RuleCondition(u'from', u'"steve@aapl.com"')],
+    [Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
           shouldArchive=[RuleAction(u'shouldArchive', u'true')]),
-     Rule(from=[RuleCondition(u'from', u'"steve@aapl.com"')],
+     Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
           shouldArchive=[RuleAction(u'shouldArchive', u'false')],
           subject=[RuleCondition(u'subject', u'"stop ignoring me"')])]
 
@@ -366,12 +388,12 @@ class RuleSet(set):
     ... })
     >>> sorted(rule.conditions for rule in ruleset)
     ... # doctest: +NORMALIZE_WHITESPACE
-    [[RuleCondition(u'from', u'"jony@aapl.com"')],
-     [RuleCondition(u'from', u'"jony@aapl.com"'), RuleCondition(u'to', u'"everyone@aapl.com"')],
-     [RuleCondition(u'from', u'"steve@aapl.com"')],
-     [RuleCondition(u'from', u'"steve@aapl.com"'), RuleCondition(u'to', u'"everyone@aapl.com"')],
-     [RuleCondition(u'from', u'"tim@aapl.com"')],
-     [RuleCondition(u'from', u'"tim@aapl.com"'), RuleCondition(u'to', u'"everyone@aapl.com"')]]
+    [[RuleCondition(u'from', u'jony@aapl.com')],
+     [RuleCondition(u'from', u'jony@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')],
+     [RuleCondition(u'from', u'steve@aapl.com')],
+     [RuleCondition(u'from', u'steve@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')],
+     [RuleCondition(u'from', u'tim@aapl.com')],
+     [RuleCondition(u'from', u'tim@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')]]
     """
 
     more_key = 'more'
