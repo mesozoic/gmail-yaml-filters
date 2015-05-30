@@ -133,16 +133,18 @@ class RuleCondition(_RuleConstruction):
         return value
 
     @classmethod
-    def join_by(cls, joiner, values):
-        return joiner.join(cls.validate_value(None, value) for value in sorted(values))
+    def joined_by(cls, joiner, key, values):
+        validated = [cls.validate_value(key, value) for value in sorted(values)]
+        joined = joiner.join(validated)
+        return cls(key, joined, validate_value=False)
 
     @classmethod
     def and_(cls, key, values):
-        return cls(key, cls.join_by(' AND ', values), validate_value=False)
+        return cls.joined_by(' AND ', key, values)
 
     @classmethod
     def or_(cls, key, values):
-        return cls(key, cls.join_by(' OR ', values), validate_value=False)
+        return cls.joined_by(' OR ', key, values)
 
 
 class RuleAction(_RuleConstruction):
