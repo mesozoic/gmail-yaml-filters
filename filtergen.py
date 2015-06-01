@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from __future__ import unicode_literals
 from __future__ import print_function
 
@@ -8,6 +11,11 @@ from itertools import chain
 from lxml import etree
 import sys
 import yaml
+
+
+"""
+Produces Gmail filter XML files based on a more human-readable YAML spec.
+"""
 
 
 # Unicode support. <http://stackoverflow.com/questions/2890146>
@@ -98,12 +106,23 @@ class _RuleConstruction(object):
 
 class RuleCondition(_RuleConstruction):
     """
+    Represents a condition for a Gmail filter.
+
     >>> cond = RuleCondition('from', 'bill@microsoft.com')
     >>> cond.key
     u'from'
+    >>> cond.value
+    u'bill@microsoft.com'
+
+    We don't do anything intelligent with Gmail's search keywords
+    if they're included in the condition value. For example, the
+    below is equivalent to the previous example:
+
     >>> cond = RuleCondition('match', 'from:bill@microsoft.com')
     >>> cond.key
     u'hasTheWord'
+    >>> cond.value
+    u'from:bill@microsoft.com'
 
     We implement a 'list:' shortcut:
 
@@ -260,6 +279,9 @@ class Rule(object):
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar', 'baz']})
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar'], 'any': ['goo', 'gar']})
         """
+        invalid_keys = set(compound) - set(['any', 'all'])
+        if invalid_keys:
+            raise InvalidIdentifier(invalid_keys)
         if 'any' in compound:
             self.add_condition(RuleCondition.or_(key, compound['any']))
         if 'all' in compound:
@@ -270,28 +292,6 @@ class Rule(object):
 
     def add_action(self, action):
         self._actions.setdefault(action.key, set()).add(action)
-
-    @property
-    def conditions(self):
-        """Returns a list of this rule's conditions.
-        """
-        return sorted(
-            data_value
-            for data_key, data_values in self.data.iteritems()
-            for data_value in data_values
-            if isinstance(data_value, RuleCondition)
-        )
-
-    @property
-    def actions(self):
-        """Returns a list of all this rule's conditions.
-        """
-        return sorted(
-            data_value
-            for data_key, data_values in self.data.iteritems()
-            for data_value in data_values
-            if isinstance(data_value, RuleAction)
-        )
 
     @property
     def data(self):
@@ -307,6 +307,26 @@ class Rule(object):
         for action in list(chain.from_iterable(self._actions.itervalues())):
             data[action.key] = [action]  # you can only take a given action _once_
         return data
+
+    @property
+    def conditions(self):
+        """Returns a list of this rule's conditions.
+        """
+        return self._flattened_constructs(RuleCondition)
+
+    @property
+    def actions(self):
+        """Returns a list of all this rule's conditions.
+        """
+        return self._flattened_constructs(RuleAction)
+
+    def _flattened_constructs(self, construct_class):
+        return sorted(
+            data_value
+            for data_key, data_values in self.data.iteritems()
+            for data_value in data_values
+            if isinstance(data_value, construct_class)
+        )
 
     def flatten(self):
         """
