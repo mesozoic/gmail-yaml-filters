@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 from collections import Iterable
+from collections import OrderedDict
 from datetime import datetime
 from functools import total_ordering
 from itertools import chain
@@ -354,7 +355,7 @@ class Rule(object):
                     construction.apply_format(**format_vars)
 
 
-class RuleSet(set):
+class RuleSet(object):
     """
     Contains a set of Rule instances.
 
@@ -421,6 +422,24 @@ class RuleSet(set):
     more_key = 'more'
     foreach_key = 'for_each'
     foreach_rule_key = 'rule'
+
+    def __init__(self):
+        self._rules = OrderedDict()
+
+    def __iter__(self):
+        for rule_key, rule in self._rules.iteritems():
+            yield rule
+
+    def add(self, rule):
+        self._rules[hash(rule)] = rule
+
+    def update(self, ruleset):
+        for rule in ruleset.rules:
+            self.add(rule)
+
+    @property
+    def rules(self):
+        return self._rules.values()
 
     @classmethod
     def from_object(cls, obj, base_rule=None):
