@@ -28,7 +28,8 @@ yaml.SafeLoader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 
 
 def quote_value_if_necessary(value):
-    if ' ' in value and '"' not in value:
+    if ' ' in value and '"' not in value \
+            and not (value.startswith('(') and value.endswith(')')):
         return '"{0}"'.format(value)
     return value
 
@@ -155,7 +156,7 @@ class RuleCondition(_RuleConstruction):
     @classmethod
     def joined_by(cls, joiner, key, values):
         validated = [cls.validate_value(key, value) for value in sorted(values)]
-        joined = joiner.join(validated)
+        joined = '({0})'.format(joiner.join(validated))
         return cls(key, joined, validate_value=False)
 
     @classmethod
@@ -216,19 +217,30 @@ class Rule(object):
 
     >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
     >>> rule.flatten()
-    {u'hasTheWord': RuleCondition(u'hasTheWord', u'"cheap airfare" AND "great discount"')}
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("cheap airfare" AND "great discount")')}
 
     You can also use an "all" hash to achieve the same effect:
 
     >>> rule = Rule({'has': ['great discount', 'cheap airfare']})
     >>> rule.flatten()
-    {u'hasTheWord': RuleCondition(u'hasTheWord', u'"cheap airfare" AND "great discount"')}
+    {u'hasTheWord': RuleCondition(u'hasTheWord', u'("cheap airfare" AND "great discount")')}
 
     ...or an "any" hash to get conditions OR'd together:
 
     >>> rule = Rule({'from': {'any': ['bill@msft.com', 'steve@msft.com', 'satya@msft.com']}})
     >>> rule.flatten()
-    {u'from': RuleCondition(u'from', u'bill@msft.com OR satya@msft.com OR steve@msft.com')}
+    {u'from': RuleCondition(u'from', u'(bill@msft.com OR satya@msft.com OR steve@msft.com)')}
+
+    ...or both!
+
+    >>> rule = Rule({
+    ...     'to': {
+    ...         'any': ['bill@msft.com', 'steve@msft.com'],
+    ...         'all': ['satya@msft.com'],
+    ...     }
+    ... })
+    >>> rule.flatten()
+    {u'to': RuleCondition(u'to', u'((bill@msft.com OR steve@msft.com) AND (satya@msft.com))')}
     """
 
     def __init__(self, data=None, base_rule=None):
