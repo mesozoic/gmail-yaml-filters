@@ -294,7 +294,7 @@ class Rule(object):
         """
         invalid_keys = set(compound) - set(['any', 'all'])
         if invalid_keys:
-            raise InvalidIdentifier(invalid_keys)
+            raise KeyError(invalid_keys)
         if 'any' in compound:
             self.add_condition(RuleCondition.or_(key, compound['any']))
         if 'all' in compound:
