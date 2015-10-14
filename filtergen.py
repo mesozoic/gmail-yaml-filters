@@ -289,16 +289,30 @@ class Rule(object):
 
         >>> rule = Rule()
         >>> rule.add_compound_construction('hasTheWord', {'any': ['foo', 'bar', 'baz']})
+        >>> rule
+        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(bar OR baz OR foo)')])
+
+        >>> rule = Rule()
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar', 'baz']})
-        >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar'], 'any': ['goo', 'gar']})
+        >>> rule
+        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(bar AND baz AND foo)')])
+
+        >>> rule = Rule()
+        >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar'], 'any': 'baz'})
+        >>> rule
+        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(baz)'), RuleCondition(u'hasTheWord', u'(bar AND foo)')])
         """
         invalid_keys = set(compound) - set(['any', 'all'])
         if invalid_keys:
             raise KeyError(invalid_keys)
+        # Listify a single string rather than turning each letter into a condition; this is a common user mistake
+        # and it's better to second-guess their intent than to treat a string like a list of single-letter searches.
         if 'any' in compound:
-            self.add_condition(RuleCondition.or_(key, compound['any']))
+            value = [compound['any']] if isinstance(compound['any'], basestring) else compound['any']
+            self.add_condition(RuleCondition.or_(key, value))
         if 'all' in compound:
-            self.add_condition(RuleCondition.and_(key, compound['all']))
+            value = [compound['all']] if isinstance(compound['all'], basestring) else compound['all']
+            self.add_condition(RuleCondition.and_(key, value))
 
     def add_condition(self, condition):
         self._conditions.setdefault(condition.key, set()).add(condition)
