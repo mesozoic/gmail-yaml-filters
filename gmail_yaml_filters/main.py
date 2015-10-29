@@ -557,3 +557,7 @@ def main():
 
     ruleset = RuleSet.from_object(data)
     print(ruleset_to_xml(ruleset))
+
+
+if __name__ == '__main__':
+    main()
