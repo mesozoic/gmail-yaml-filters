@@ -551,7 +551,7 @@ def ruleset_to_xml(ruleset):
     return etree.tostring(dom, pretty_print=True, encoding='utf8').decode('utf8')
 
 
-if __name__ == '__main__':
+def main():
     with open(sys.argv[1]) as inputf:
         data = yaml.safe_load(inputf.read())
 
