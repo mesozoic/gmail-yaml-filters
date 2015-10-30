@@ -17,4 +17,8 @@ setup(
             'gmail-yaml-filters = gmail_yaml_filters.main:main',
         ],
     },
+    install_requires=[
+        'lxml',
+        'PyYAML',
+    ],
 )
