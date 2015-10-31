@@ -257,10 +257,10 @@ class Rule(object):
         return '{0}({1})'.format(self.__class__.__name__, rule_data)
 
     def __eq__(self, other):
-        return self.data == other.data
+        return self.sortable_data == other.sortable_data
 
     def __lt__(self, other):
-        return self.data < other.data
+        return self.sortable_data < other.sortable_data
 
     def update(self, data):
         for key, value in dict(data).iteritems():
@@ -300,7 +300,7 @@ class Rule(object):
         >>> rule = Rule()
         >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar'], 'any': 'baz'})
         >>> rule
-        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(baz)'), RuleCondition(u'hasTheWord', u'(bar AND foo)')])
+        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(bar AND foo)'), RuleCondition(u'hasTheWord', u'(baz)')])
         """
         invalid_keys = set(compound) - set(['any', 'all'])
         if invalid_keys:
@@ -334,6 +334,10 @@ class Rule(object):
         for action in list(chain.from_iterable(self._actions.itervalues())):
             data[action.key] = [action]  # you can only take a given action _once_
         return data
+
+    @property
+    def sortable_data(self):
+        return tuple(sorted(self.data.items()))
 
     @property
     def conditions(self):
@@ -417,10 +421,10 @@ class RuleSet(object):
     >>> sorted(ruleset)
     ... # doctest: +NORMALIZE_WHITESPACE
     [Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
-          shouldArchive=[RuleAction(u'shouldArchive', u'true')]),
-     Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
           shouldArchive=[RuleAction(u'shouldArchive', u'false')],
-          subject=[RuleCondition(u'subject', u'"stop ignoring me"')])]
+          subject=[RuleCondition(u'subject', u'"stop ignoring me"')]),
+     Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
+          shouldArchive=[RuleAction(u'shouldArchive', u'true')])]
 
     Or even with loops:
 
