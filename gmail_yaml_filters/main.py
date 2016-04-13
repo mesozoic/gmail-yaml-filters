@@ -176,10 +176,12 @@ class RuleAction(_RuleConstruction):
     identifier_map = {
         'label': 'label',
         'important': 'shouldAlwaysMarkAsImportant',
-        'unimportant': 'shouldNeverMarkAsImportant',
+        'mark_as_important': 'shouldAlwaysMarkAsImportant',
         'not_important': 'shouldNeverMarkAsImportant',
+        'never_mark_as_important': 'shouldNeverMarkAsImportant',
         'archive': 'shouldArchive',
         'read': 'shouldMarkAsRead',
+        'mark_as_read': 'shouldMarkAsRead',
         'star': 'shouldStar',
         'trash': 'shouldTrash',
         'delete': 'shouldTrash',
@@ -559,7 +561,10 @@ def main():
     with open(sys.argv[1]) as inputf:
         data = yaml.safe_load(inputf.read())
 
-    ruleset = RuleSet.from_object(data)
+    if not isinstance(data, list):
+        data = [data]
+
+    ruleset = RuleSet.from_object(rule for rule in data if not rule.get('ignore'))
     print(ruleset_to_xml(ruleset))
 
 
