@@ -29,7 +29,10 @@ yaml.SafeLoader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 
 def quote_value_if_necessary(value):
     if ' ' in value and '"' not in value \
-            and not (value.startswith('(') and value.endswith(')')):
+            and not value.startswith('-') \
+            and not (
+                value.startswith('(') and value.endswith(')')
+            ):
         return '"{0}"'.format(value)
     return value
 
@@ -64,7 +67,11 @@ class _RuleConstruction(object):
         if validate_value:
             value = self.validate_value(key, value)
         self.key = key
-        self.value = value
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
 
     @classmethod
     def remap_key_and_value(cls, key, value):
@@ -91,7 +98,7 @@ class _RuleConstruction(object):
         return value
 
     def apply_format(self, **format_vars):
-        self.value = self.value.format(**format_vars)
+        self._value = self._value.format(**format_vars)
 
     def __hash__(self):
         return hash((self.key, self.value))
@@ -130,6 +137,11 @@ class RuleCondition(_RuleConstruction):
 
     >>> RuleCondition('list', 'exec.msft.com')
     RuleCondition(u'hasTheWord', u'list:(exec.msft.com)')
+
+    ...and the ability to negate a rule:
+
+    >>> RuleCondition('list', 'exec.msft.com', negate=True)
+    RuleCondition(u'hasTheWord', u'-list:(exec.msft.com)')
     """
 
     identifier_map = {
@@ -146,6 +158,20 @@ class RuleCondition(_RuleConstruction):
     formatter_map = {
         'list': ('has', 'list:({value})'),
     }
+
+    def __init__(self, key, value, validate_value=True, negate=False):
+        super(RuleCondition, self).__init__(key, value, validate_value=validate_value)
+        self.negate = negate
+
+    def negated(self):
+        return self.__class__(self.key, self.value, validate_value=False, negate=(not self.negate))
+
+    @property
+    def value(self):
+        if self.negate:
+            return '-{0}'.format(self._value)
+        else:
+            return self._value
 
     @classmethod
     def validate_value(cls, key, value):
@@ -196,6 +222,53 @@ class RuleAction(_RuleConstruction):
             return value
 
 
+def build_compound_conditions(key, compound):
+    """
+    Create an "any" or "all" (or combination thereof).
+
+    >>> build_compound_conditions('hasTheWord', 'whatever')
+    [RuleCondition(u'hasTheWord', u'whatever')]
+
+    >>> build_compound_conditions('hasTheWord', {'not': 'whatever'})
+    [RuleCondition(u'hasTheWord', u'-whatever')]
+
+    >>> build_compound_conditions('hasTheWord', {'any': ['foo', 'bar', 'baz']})
+    [RuleCondition(u'hasTheWord', u'(bar OR baz OR foo)')]
+
+    >>> build_compound_conditions('hasTheWord', {'all': ['foo', 'bar', 'baz']})
+    [RuleCondition(u'hasTheWord', u'(bar AND baz AND foo)')]
+
+    >>> build_compound_conditions('hasTheWord', {'all': ['foo', 'bar'], 'any': 'baz'})
+    [RuleCondition(u'hasTheWord', u'(bar AND foo)'), RuleCondition(u'hasTheWord', u'(baz)')]
+
+    >>> build_compound_conditions('hasTheWord', {'all': ['foo', 'bar'], 'not': {'any': ['baz', 'blitz']}})
+    [RuleCondition(u'hasTheWord', u'(bar AND foo)'), RuleCondition(u'hasTheWord', u'-(baz OR blitz)')]
+    """
+    if isinstance(compound, basestring):
+        return [RuleCondition(key, compound)]
+
+    invalid_keys = set(compound) - set(['any', 'all', 'not'])
+    if invalid_keys:
+        raise KeyError(invalid_keys)
+
+    # Listify a single string rather than turning each letter into a condition; this is a common user mistake
+    # and it's better to second-guess their intent than to treat a string like a list of single-letter searches.
+    conditions = []
+
+    if 'any' in compound:
+        value = [compound['any']] if isinstance(compound['any'], basestring) else compound['any']
+        conditions.append(RuleCondition.or_(key, value))
+
+    if 'all' in compound:
+        value = [compound['all']] if isinstance(compound['all'], basestring) else compound['all']
+        conditions.append(RuleCondition.and_(key, value))
+
+    if 'not' in compound:
+        conditions.extend(rule.negated() for rule in build_compound_conditions(key, compound['not']))
+
+    return sorted(conditions)
+
+
 @total_ordering
 class Rule(object):
     """
@@ -233,16 +306,16 @@ class Rule(object):
     >>> rule.flatten()
     {u'from': RuleCondition(u'from', u'(bill@msft.com OR satya@msft.com OR steve@msft.com)')}
 
-    ...or both!
+    ...or something wacky:
 
     >>> rule = Rule({
     ...     'to': {
-    ...         'any': ['bill@msft.com', 'steve@msft.com'],
+    ...         'not': {'any': ['bill@msft.com', 'steve@msft.com']},
     ...         'all': ['satya@msft.com'],
     ...     }
     ... })
     >>> rule.flatten()
-    {u'to': RuleCondition(u'to', u'((bill@msft.com OR steve@msft.com) AND (satya@msft.com))')}
+    {u'to': RuleCondition(u'to', u'((satya@msft.com) AND -(bill@msft.com OR steve@msft.com))')}
     """
 
     def __init__(self, data=None, base_rule=None):
@@ -255,8 +328,11 @@ class Rule(object):
             self.update(data)
 
     def __repr__(self):
-        rule_data = ', '.join('{0}={1!r}'.format(*item) for item in sorted(self.data.iteritems()))
-        return '{0}({1})'.format(self.__class__.__name__, rule_data)
+        rule_reprs = [
+            '{0}={1!r}'.format(key, sorted(value) if isinstance(value, list) else value)
+            for key, value in sorted(self.data.iteritems())
+        ]
+        return '{0}({1})'.format(self.__class__.__name__, ', '.join(sorted(rule_reprs)))
 
     def __eq__(self, other):
         return self.sortable_data == other.sortable_data
@@ -272,7 +348,7 @@ class Rule(object):
         if isinstance(value, (bool, basestring)):
             self.add_construction(key, value)
         elif isinstance(value, dict):
-            self.add_compound_construction(key, value)
+            self.add_compound_conditions(key, value)
         elif isinstance(value, Iterable):
             for actual_value in value:
                 self.add(key, actual_value)
@@ -285,36 +361,9 @@ class Rule(object):
         except InvalidIdentifier:
             self.add_action(RuleAction(key, value))
 
-    def add_compound_construction(self, key, compound):
-        """
-        Add an "any" or "all" (or combination thereof).
-
-        >>> rule = Rule()
-        >>> rule.add_compound_construction('hasTheWord', {'any': ['foo', 'bar', 'baz']})
-        >>> rule
-        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(bar OR baz OR foo)')])
-
-        >>> rule = Rule()
-        >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar', 'baz']})
-        >>> rule
-        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(bar AND baz AND foo)')])
-
-        >>> rule = Rule()
-        >>> rule.add_compound_construction('hasTheWord', {'all': ['foo', 'bar'], 'any': 'baz'})
-        >>> rule
-        Rule(hasTheWord=[RuleCondition(u'hasTheWord', u'(bar AND foo)'), RuleCondition(u'hasTheWord', u'(baz)')])
-        """
-        invalid_keys = set(compound) - set(['any', 'all'])
-        if invalid_keys:
-            raise KeyError(invalid_keys)
-        # Listify a single string rather than turning each letter into a condition; this is a common user mistake
-        # and it's better to second-guess their intent than to treat a string like a list of single-letter searches.
-        if 'any' in compound:
-            value = [compound['any']] if isinstance(compound['any'], basestring) else compound['any']
-            self.add_condition(RuleCondition.or_(key, value))
-        if 'all' in compound:
-            value = [compound['all']] if isinstance(compound['all'], basestring) else compound['all']
-            self.add_condition(RuleCondition.and_(key, value))
+    def add_compound_conditions(self, key, compound):
+        for condition in build_compound_conditions(key, compound):
+            self.add_condition(condition)
 
     def add_condition(self, condition):
         self._conditions.setdefault(condition.key, set()).add(condition)
