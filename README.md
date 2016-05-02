@@ -72,19 +72,20 @@ python gmail_yaml_filters/main.py my-filters.yaml > my-filters.xml
 
 Supported conditions:
 
-* `from`
-* `to`
-* `subject`
-* `has` (also `match`)
 * `does_not_have` (also `missing`, `no_match`)
+* `from`
+* `has` (also `match`)
 * `list`
+* `subject`
+* `to`
 
 Supported actions:
 
-* `label`
-* `important` (also `mark_as_important`)
-* `not_important` (also `never_mark_as_important`)
 * `archive`
+* `important` (also `mark_as_important`)
+* `label`
+* `not_important` (also `never_mark_as_important`)
+* `not_spam`
 * `read` (also `mark_as_read`)
 * `star`
 * `trash` (also `delete`)

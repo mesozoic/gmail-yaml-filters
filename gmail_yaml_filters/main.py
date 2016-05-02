@@ -211,6 +211,7 @@ class RuleAction(_RuleConstruction):
         'star': 'shouldStar',
         'trash': 'shouldTrash',
         'delete': 'shouldTrash',
+        'not_spam': 'shouldNeverSpam',
         # TODO: support smart labels / tabs (Personal, Social, etc.)
     }
 
