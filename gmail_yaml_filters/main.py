@@ -205,6 +205,8 @@ class RuleAction(_RuleConstruction):
         'mark_as_important': 'shouldAlwaysMarkAsImportant',
         'not_important': 'shouldNeverMarkAsImportant',
         'never_mark_as_important': 'shouldNeverMarkAsImportant',
+        'not_spam': 'shouldNeverSpam',
+        'never_mark_as_spam': 'shouldNeverSpam',
         'archive': 'shouldArchive',
         'read': 'shouldMarkAsRead',
         'mark_as_read': 'shouldMarkAsRead',
