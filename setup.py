@@ -4,6 +4,8 @@ from setuptools import setup
 
 setup(
     name='gmail-yaml-filters',
+    author='Alex Levy',
+    author_email='mesozoic@users.noreply.github.com',
     description='A quick tool for generating Gmail filters from YAML rules.',
     url='https://github.com/mesozoic/gmail-yaml-filters',
     version='0.3',
