@@ -1,3 +1,5 @@
+build/
+dist/
 .tox
 *.egg-info
 __pycache__

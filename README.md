@@ -7,7 +7,8 @@ A quick tool for generating Gmail filters from YAML rules.
 Quick start:
 
 ```
-python gmail_yaml_filters/main.py my-filters.yaml > my-filters.xml
+pip install gmail-yaml-filters
+gmail-yaml-filters my-filters.yaml > my-filters.xml
 ```
 
 (Will add to PyPI soon. It's not up there yet.)
