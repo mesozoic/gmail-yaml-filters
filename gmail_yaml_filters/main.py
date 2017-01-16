@@ -15,6 +15,7 @@ import sys
 import yaml
 
 from gmail_yaml_filters.upload import upload_ruleset
+from gmail_yaml_filters.upload import prune_filters_not_in_ruleset
 
 
 """
@@ -380,7 +381,7 @@ class Rule(object):
     def data(self):
         """
         Returns a single dictionary representing all of
-        the rule's conditions and actions.
+        the rule's conditions and actions, including its base.
         """
         data = {}
         if self.base_rule:
@@ -399,15 +400,15 @@ class Rule(object):
     def conditions(self):
         """Returns a list of this rule's conditions.
         """
-        return self._flattened_constructs(RuleCondition)
+        return self._separated_constructs(RuleCondition)
 
     @property
     def actions(self):
         """Returns a list of all this rule's conditions.
         """
-        return self._flattened_constructs(RuleAction)
+        return self._separated_constructs(RuleAction)
 
-    def _flattened_constructs(self, construct_class):
+    def _separated_constructs(self, construct_class):
         return sorted(
             data_value
             for data_key, data_values in self.data.iteritems()
@@ -615,6 +616,7 @@ def create_parser():
     parser = argparse.ArgumentParser()
     parser.set_defaults(action='xml')
     parser.add_argument('--upload', dest='action', action='store_const', const='upload')
+    parser.add_argument('--prune', dest='action', action='store_const', const='prune')
     parser.add_argument('filename', metavar='FILE', default='-')
     return parser
 
@@ -637,6 +639,8 @@ def main():
         print(ruleset_to_xml(ruleset))
     elif args.action == 'upload':
         upload_ruleset(ruleset)
+    elif args.action == 'prune':
+        prune_filters_not_in_ruleset(ruleset)
     else:
         raise argparse.ArgumentError('%r not recognized' % args.action)
 

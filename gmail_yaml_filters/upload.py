@@ -33,71 +33,173 @@ CONDITION_KEY_MAP = {
 def _rule_conditions_to_dict(rule):
     return {
         CONDITION_KEY_MAP[condition.key]: condition.value
-        for condition in rule.conditions
+        for condition in rule.flatten().values()
+        if condition.key in CONDITION_KEY_MAP
     }
 
 
 ACTION_KEY_MAP = {
     'label': None,
-    'shouldAlwaysMarkAsImportant': ('add', {'IMPORTANT'}),
-    'shouldArchive': ('remove', {'INBOX'}),
-    'shouldMarkAsRead': ('remove', {'UNREAD'}),
-    'shouldNeverMarkAsImportant': ('remove', {'IMPORTANT'}),
-    'shouldNeverSpam': ('remove', {'SPAM'}),
-    'shouldStar': ('add', {'STARRED'}),
-    'shouldTrash': ('add', {'TRASH'}),
+    'shouldAlwaysMarkAsImportant': ('add', ['IMPORTANT']),
+    'shouldArchive': ('remove', ['INBOX']),
+    'shouldMarkAsRead': ('remove', ['UNREAD']),
+    'shouldNeverMarkAsImportant': ('remove', ['IMPORTANT']),
+    'shouldNeverSpam': ('remove', ['SPAM']),
+    'shouldStar': ('add', ['STARRED']),
+    'shouldTrash': ('add', ['TRASH']),
 }
 
 
 def _rule_actions_to_dict(rule):
     result = defaultdict(set)
-    for action in rule.actions:
-        label_action = ACTION_KEY_MAP[action.key]
+
+    for action in rule.flatten().values():
+        # This is how we know whether we have actions or conditions. Could be smarter.
+        if action.key not in ACTION_KEY_MAP:
+            continue
         if action.key == 'label':
             result['addLabelIds'].add(action.value)
-        elif label_action:
-            result['{}LabelIds'.format(label_action[0])].update(label_action[1])
         else:
-            raise ValueError('Unexpected action key: {0!r}'.format(action.key))
+            label_action, label_values = ACTION_KEY_MAP[action.key]
+            result['{}LabelIds'.format(label_action)].update(label_values)
+
     return result
-    # strip away defaultdict and set; they won't be JSON-serializable
-    return {key: list(values) for key, values in result.items()}
 
 
-def rule_to_filter_resource(rule):
-    """Converts a Rule instance to the Gmail v1 API Filter resource.
-
-    See https://developers.google.com/gmail/api/v1/reference/users/settings/filters#resource
+class GmailLabels(object):
     """
+    Wrapper around the Gmail Users.labels API that munges label names to try to make them match.
+
+    See https://developers.google.com/gmail/api/v1/reference/users/labels
+    """
+    def __init__(self, gmail):
+        self.gmail = gmail
+        self.reload()
+
+    def reload(self):
+        self.labels = self.gmail.users().labels().list(userId='me').execute()['labels']
+        self.by_lower_name = {label['name'].lower(): label for label in self.labels}
+
+    def __iter__(self):
+        return iter(self.labels)
+
+    def __getitem__(self, name):
+        for possible_name in self._possible_names(name):
+            if possible_name in self.by_lower_name:
+                return self.by_lower_name[possible_name]
+        raise KeyError(name)
+
+    def _possible_names(self, name):
+        name = name.lower()
+        return (
+            name,
+            name.replace(' ', '-'),
+            name.replace('-', ' '),
+            name.replace('-', '/'),
+        )
+
+    def get_or_create(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            print('Creating label', name.encode('utf-8'), file=sys.stderr)
+            request = self.gmail.users().labels().create(userId='me', body={'name': name})
+            created = request.execute()
+            self.labels.append(created)
+            self.by_lower_name[created['name'].lower()] = created
+            return self[name]
+
+
+class GmailFilters(object):
+    def __init__(self, gmail):
+        self.gmail = gmail
+        self.reload()
+
+    def reload(self):
+        self.filters = self.gmail.users().settings().filters().list(userId='me').execute()['filter']
+        self.matchable_filters = [
+            self._matchable(existing_filter)
+            for existing_filter
+            in self.gmail.users().settings().filters().list(userId='me').execute()['filter']
+        ]
+
+    def __iter__(self):
+        return iter(self.filters)
+
+    def _matchable(self, filter_dict):
+        return {
+            'criteria': filter_dict['criteria'],
+            'action': {
+                action_key: set(action_values)
+                for action_key, action_values
+                in filter_dict['action'].items()
+            }
+        }
+
+    def exists(self, filter_dict):
+        return self._matchable(filter_dict) in self.matchable_filters
+
+    def prunable(self, filter_dicts):
+        matchable = [self._matchable(filter_dict) for filter_dict in filter_dicts]
+        return [prunable for prunable in self.filters if self._matchable(prunable) not in matchable]
+
+
+def rule_to_resource(rule, labels, create_missing=False):
     return {
         'criteria': _rule_conditions_to_dict(rule),
-        'action': _rule_actions_to_dict(rule),
+        'action': {
+            key: set(
+                (labels.get_or_create(value) if create_missing else labels[value])['id']
+                for value in values
+            )
+            for key, values
+            in _rule_actions_to_dict(rule).items()
+        }
     }
-
-
-def upload_rule(rule, service):
-    rule_dict = rule_to_filter_resource(rule)
-    print('Creating rule', rule_dict, file=sys.stderr)
-    #service.users().settings().filters().create(userId='me', body=rule_dict)
 
 
 def upload_ruleset(ruleset, service=None):
     service = service or get_gmail_service()
+    known_labels = GmailLabels(service)
+    known_filters = GmailFilters(service)
+
     for rule in ruleset:
         if not rule.actions:
             continue
-        upload_rule(rule, service)
+
+        # See https://developers.google.com/gmail/api/v1/reference/users/settings/filters#resource
+        filter_data = rule_to_resource(rule, known_labels, create_missing=True)
+
+        if filter_data not in known_filters:
+            print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
+            # Strip out defaultdict and set; they won't be JSON-serializable
+            filter_data['action'] = {key: list(values) for key, values in filter_data['action'].items()}
+            request = service.users().settings().filters().create(userId='me', body=filter_data)
+            request.execute()
+
+
+def prune_filters_not_in_ruleset(ruleset, service=None):
+    service = service or get_gmail_service()
+    known_labels = GmailLabels(service)
+    known_filters = GmailFilters(service)
+    ruleset_filters = [rule_to_resource(rule, known_labels) for rule in ruleset]
+
+    for prunable_filter in known_filters.prunable(ruleset_filters):
+        print('Deleting', prunable_filter['id'], prunable_filter['criteria'], prunable_filter['action'], file=sys.stderr)
+        service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
 
 
 def get_gmail_service():
     credentials = get_gmail_credentials()
     http = credentials.authorize(httplib2.Http())
-    service = apiclient.discovery.build('gmail', 'v1', http=http)
-    return service
+    return apiclient.discovery.build('gmail', 'v1', http=http)
 
 
 def get_gmail_credentials(
-    scopes='https://www.googleapis.com/auth/gmail.settings.basic',
+    scopes=[
+        'https://www.googleapis.com/auth/gmail.settings.basic',
+        'https://www.googleapis.com/auth/gmail.labels',
+    ],
     client_secret_file='client_secret.json',
     application_name='gmail_yaml_filters',
 ):
