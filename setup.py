@@ -5,8 +5,8 @@ from setuptools import setup
 setup(
     name='gmail-yaml-filters',
     description='A quick tool for generating Gmail filters from YAML rules.',
-    url='https://github.com/aclevy/gmail-yaml-filters',
-    version='0.1',
+    url='https://github.com/mesozoic/gmail-yaml-filters',
+    version='0.2',
     classifiers=[
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
@@ -19,6 +19,6 @@ setup(
     },
     install_requires=[
         'lxml',
-        'PyYAML',
+        'pyyaml',
     ],
 )
