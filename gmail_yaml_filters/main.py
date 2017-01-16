@@ -10,8 +10,11 @@ from datetime import datetime
 from functools import total_ordering
 from itertools import chain
 from lxml import etree
+import argparse
 import sys
 import yaml
+
+from gmail_yaml_filters.upload import upload_ruleset
 
 
 """
@@ -108,10 +111,10 @@ class _RuleConstruction(object):
         return '{0}({1!r}, {2!r})'.format(self.__class__.__name__, self.key, self.value)
 
     def __eq__(self, other):
-        return (self.key, self.value) == (other.key, other.value)
+        return isinstance(other, self.__class__) and (self.key, self.value) == (other.key, other.value)
 
     def __lt__(self, other):
-        return (self.key, self.value) < (other.key, other.value)
+        return isinstance(other, self.__class__) and (self.key, self.value) < (other.key, other.value)
 
 
 class RuleCondition(_RuleConstruction):
@@ -608,15 +611,34 @@ def ruleset_to_xml(ruleset):
     return etree.tostring(dom, pretty_print=True, encoding='utf8').decode('utf8')
 
 
+def create_parser():
+    parser = argparse.ArgumentParser()
+    parser.set_defaults(action='xml')
+    parser.add_argument('--upload', dest='action', action='store_const', const='upload')
+    parser.add_argument('filename', metavar='FILE', default='-')
+    return parser
+
+
 def main():
-    with open(sys.argv[1]) as inputf:
-        data = yaml.safe_load(inputf.read())
+    args = create_parser().parse_args()
+
+    if args.filename == '-':
+        data = yaml.safe_load(sys.stdin)
+    else:
+        with open(args.filename) as inputf:
+            data = yaml.safe_load(inputf)
 
     if not isinstance(data, list):
         data = [data]
 
     ruleset = RuleSet.from_object(rule for rule in data if not rule.get('ignore'))
-    print(ruleset_to_xml(ruleset))
+
+    if args.action == 'xml':
+        print(ruleset_to_xml(ruleset))
+    elif args.action == 'upload':
+        upload_ruleset(ruleset)
+    else:
+        raise argparse.ArgumentError('%r not recognized' % args.action)
 
 
 if __name__ == '__main__':
