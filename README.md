@@ -95,3 +95,4 @@ Any set of rules with `ignore: true` will be ignored and not written to XML.
 ## Similar Projects
 
 * [gmail-britta](https://github.com/antifuchs/gmail-britta) is written in Ruby and lets you express rules with a DSL.
+* [gmail-filters](https://github.com/dimagi/gmail-filters) is written in Python and has a web frontend.

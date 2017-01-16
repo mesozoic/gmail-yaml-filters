@@ -23,6 +23,7 @@ Produces Gmail filter XML files based on a more human-readable YAML spec.
 def construct_yaml_str(self, node):
     return self.construct_scalar(node)
 
+
 yaml.Loader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 yaml.SafeLoader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
 
