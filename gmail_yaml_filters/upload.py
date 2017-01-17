@@ -110,6 +110,13 @@ class GmailLabels(object):
             return self[name]
 
 
+def _simplify_filter(filter_dict):
+    return {
+        'criteria': filter_dict['criteria'],
+        'action': {key: set(values) for key, values in filter_dict['action'].items()},
+    }
+
+
 class GmailFilters(object):
     def __init__(self, gmail):
         self.gmail = gmail
@@ -118,7 +125,7 @@ class GmailFilters(object):
     def reload(self):
         self.filters = self.gmail.users().settings().filters().list(userId='me').execute()['filter']
         self.matchable_filters = [
-            self._matchable(existing_filter)
+            _simplify_filter(existing_filter)
             for existing_filter
             in self.gmail.users().settings().filters().list(userId='me').execute()['filter']
         ]
@@ -126,22 +133,12 @@ class GmailFilters(object):
     def __iter__(self):
         return iter(self.filters)
 
-    def _matchable(self, filter_dict):
-        return {
-            'criteria': filter_dict['criteria'],
-            'action': {
-                action_key: set(action_values)
-                for action_key, action_values
-                in filter_dict['action'].items()
-            }
-        }
-
-    def exists(self, filter_dict):
-        return self._matchable(filter_dict) in self.matchable_filters
+    def exists(self, other):
+        return _simplify_filter(other) in iter(_simplify_filter(f) for f in self.filters)
 
     def prunable(self, filter_dicts):
-        matchable = [self._matchable(filter_dict) for filter_dict in filter_dicts]
-        return [prunable for prunable in self.filters if self._matchable(prunable) not in matchable]
+        matchable = [_simplify_filter(filter_dict) for filter_dict in filter_dicts]
+        return [prunable for prunable in self.filters if _simplify_filter(prunable) not in matchable]
 
 
 def rule_to_resource(rule, labels, create_missing=False):
@@ -170,7 +167,7 @@ def upload_ruleset(ruleset, service=None):
         # See https://developers.google.com/gmail/api/v1/reference/users/settings/filters#resource
         filter_data = rule_to_resource(rule, known_labels, create_missing=True)
 
-        if filter_data not in known_filters:
+        if not known_filters.exists(filter_data):
             print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
             # Strip out defaultdict and set; they won't be JSON-serializable
             filter_data['action'] = {key: list(values) for key, values in filter_data['action'].items()}
@@ -186,7 +183,8 @@ def prune_filters_not_in_ruleset(ruleset, service=None):
 
     for prunable_filter in known_filters.prunable(ruleset_filters):
         print('Deleting', prunable_filter['id'], prunable_filter['criteria'], prunable_filter['action'], file=sys.stderr)
-        service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
+        request = service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
+        request.execute()
 
 
 def get_gmail_service():
