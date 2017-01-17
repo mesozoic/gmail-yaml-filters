@@ -22,6 +22,6 @@ setup(
     install_requires=[
         'google-api-python-client',
         'lxml',
-        'pyyaml',
+        'PyYAML',
     ],
 )
