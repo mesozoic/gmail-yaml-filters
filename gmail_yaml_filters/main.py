@@ -10,8 +10,13 @@ from datetime import datetime
 from functools import total_ordering
 from itertools import chain
 from lxml import etree
+import argparse
 import sys
 import yaml
+
+from gmail_yaml_filters.upload import get_gmail_service
+from gmail_yaml_filters.upload import upload_ruleset
+from gmail_yaml_filters.upload import prune_filters_not_in_ruleset
 
 
 """
@@ -108,10 +113,10 @@ class _RuleConstruction(object):
         return '{0}({1!r}, {2!r})'.format(self.__class__.__name__, self.key, self.value)
 
     def __eq__(self, other):
-        return (self.key, self.value) == (other.key, other.value)
+        return isinstance(other, self.__class__) and (self.key, self.value) == (other.key, other.value)
 
     def __lt__(self, other):
-        return (self.key, self.value) < (other.key, other.value)
+        return isinstance(other, self.__class__) and (self.key, self.value) < (other.key, other.value)
 
 
 class RuleCondition(_RuleConstruction):
@@ -377,7 +382,7 @@ class Rule(object):
     def data(self):
         """
         Returns a single dictionary representing all of
-        the rule's conditions and actions.
+        the rule's conditions and actions, including its base.
         """
         data = {}
         if self.base_rule:
@@ -396,15 +401,15 @@ class Rule(object):
     def conditions(self):
         """Returns a list of this rule's conditions.
         """
-        return self._flattened_constructs(RuleCondition)
+        return self._separated_constructs(RuleCondition)
 
     @property
     def actions(self):
         """Returns a list of all this rule's conditions.
         """
-        return self._flattened_constructs(RuleAction)
+        return self._separated_constructs(RuleAction)
 
-    def _flattened_constructs(self, construct_class):
+    def _separated_constructs(self, construct_class):
         return sorted(
             data_value
             for data_key, data_values in self.data.iteritems()
@@ -608,15 +613,42 @@ def ruleset_to_xml(ruleset):
     return etree.tostring(dom, pretty_print=True, encoding='utf8').decode('utf8')
 
 
+def create_parser():
+    parser = argparse.ArgumentParser()
+    parser.set_defaults(action='xml')
+    parser.add_argument('--upload', dest='action', action='store_const', const='upload')
+    parser.add_argument('--prune', dest='action', action='store_const', const='prune')
+    parser.add_argument('--sync', dest='action', action='store_const', const='upload_prune')
+    parser.add_argument('filename', metavar='FILE', default='-')
+    return parser
+
+
 def main():
-    with open(sys.argv[1]) as inputf:
-        data = yaml.safe_load(inputf.read())
+    args = create_parser().parse_args()
+
+    if args.filename == '-':
+        data = yaml.safe_load(sys.stdin)
+    else:
+        with open(args.filename) as inputf:
+            data = yaml.safe_load(inputf)
 
     if not isinstance(data, list):
         data = [data]
 
     ruleset = RuleSet.from_object(rule for rule in data if not rule.get('ignore'))
-    print(ruleset_to_xml(ruleset))
+
+    if args.action == 'xml':
+        print(ruleset_to_xml(ruleset))
+    elif args.action == 'upload':
+        upload_ruleset(ruleset)
+    elif args.action == 'prune':
+        prune_filters_not_in_ruleset(ruleset)
+    elif args.action == 'upload_prune':
+        gmail = get_gmail_service()
+        upload_ruleset(ruleset, service=gmail)
+        prune_filters_not_in_ruleset(ruleset, service=gmail)
+    else:
+        raise argparse.ArgumentError('%r not recognized' % args.action)
 
 
 if __name__ == '__main__':
