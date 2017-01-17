@@ -4,14 +4,26 @@ A quick tool for generating Gmail filters from YAML rules.
 
 ## Getting Started
 
-Quick start:
+By default, the command line script will generate XML to stdout, which
+you can then upload to Gmail yourself:
 
-```
-pip install gmail-yaml-filters
-gmail-yaml-filters my-filters.yaml > my-filters.xml
+```bash
+$ pip install gmail-yaml-filters
+$ gmail-yaml-filters my-filters.yaml > my-filters.xml
 ```
 
-(Will add to PyPI soon. It's not up there yet.)
+## Synchronization via Gmail API
+
+If you are the trusting type, you can authorize the script to
+upload new filters (and remove any obsolete filters) via Gmail's API.
+
+```bash
+# Upload all filters (and create new labels) from the configuration file
+$ gmail-yaml-filters --upload my-filters.yaml
+
+# Delete any filters that aren't defined in the configuration file
+$ gmail-yaml-filters --prune my-filters.yaml
+```
 
 ## Sample Configuration
 
