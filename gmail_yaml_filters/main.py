@@ -14,6 +14,7 @@ import argparse
 import sys
 import yaml
 
+from gmail_yaml_filters.upload import get_gmail_service
 from gmail_yaml_filters.upload import upload_ruleset
 from gmail_yaml_filters.upload import prune_filters_not_in_ruleset
 
@@ -617,6 +618,7 @@ def create_parser():
     parser.set_defaults(action='xml')
     parser.add_argument('--upload', dest='action', action='store_const', const='upload')
     parser.add_argument('--prune', dest='action', action='store_const', const='prune')
+    parser.add_argument('--sync', dest='action', action='store_const', const='upload_prune')
     parser.add_argument('filename', metavar='FILE', default='-')
     return parser
 
@@ -641,6 +643,10 @@ def main():
         upload_ruleset(ruleset)
     elif args.action == 'prune':
         prune_filters_not_in_ruleset(ruleset)
+    elif args.action == 'upload_prune':
+        gmail = get_gmail_service()
+        upload_ruleset(ruleset, service=gmail)
+        prune_filters_not_in_ruleset(ruleset, service=gmail)
     else:
         raise argparse.ArgumentError('%r not recognized' % args.action)
 
