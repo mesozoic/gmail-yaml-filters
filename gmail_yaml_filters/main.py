@@ -616,6 +616,7 @@ def ruleset_to_xml(ruleset):
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.set_defaults(action='xml')
+    parser.add_argument('-n', '--dry-run', dest='dry_run', action='store_true', default=False)
     parser.add_argument('--upload', dest='action', action='store_const', const='upload')
     parser.add_argument('--prune', dest='action', action='store_const', const='prune')
     parser.add_argument('--sync', dest='action', action='store_const', const='upload_prune')
@@ -640,13 +641,13 @@ def main():
     if args.action == 'xml':
         print(ruleset_to_xml(ruleset))
     elif args.action == 'upload':
-        upload_ruleset(ruleset)
+        upload_ruleset(ruleset, dry_run=args.dry_run)
     elif args.action == 'prune':
-        prune_filters_not_in_ruleset(ruleset)
+        prune_filters_not_in_ruleset(ruleset, dry_run=args.dry_run)
     elif args.action == 'upload_prune':
         gmail = get_gmail_service()
-        upload_ruleset(ruleset, service=gmail)
-        prune_filters_not_in_ruleset(ruleset, service=gmail)
+        upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
+        prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     else:
         raise argparse.ArgumentError('%r not recognized' % args.action)
 
