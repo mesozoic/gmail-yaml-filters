@@ -155,7 +155,7 @@ def rule_to_resource(rule, labels, create_missing=False):
     }
 
 
-def upload_ruleset(ruleset, service=None):
+def upload_ruleset(ruleset, service=None, dry_run=False):
     service = service or get_gmail_service()
     known_labels = GmailLabels(service)
     known_filters = GmailFilters(service)
@@ -171,18 +171,27 @@ def upload_ruleset(ruleset, service=None):
             print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
             # Strip out defaultdict and set; they won't be JSON-serializable
             filter_data['action'] = {key: list(values) for key, values in filter_data['action'].items()}
+            if dry_run:
+                continue
             request = service.users().settings().filters().create(userId='me', body=filter_data)
             request.execute()
 
 
-def prune_filters_not_in_ruleset(ruleset, service=None):
+def find_filters_not_in_ruleset(ruleset, service=None):
     service = service or get_gmail_service()
     known_labels = GmailLabels(service)
     known_filters = GmailFilters(service)
     ruleset_filters = [rule_to_resource(rule, known_labels) for rule in ruleset]
 
     for prunable_filter in known_filters.prunable(ruleset_filters):
+        yield prunable_filter
+
+
+def prune_filters_not_in_ruleset(ruleset, service=None, dry_run=False):
+    for prunable_filter in find_filters_not_in_ruleset(ruleset, service):
         print('Deleting', prunable_filter['id'], prunable_filter['criteria'], prunable_filter['action'], file=sys.stderr)
+        if dry_run:
+            continue
         request = service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
         request.execute()
 
