@@ -26,6 +26,9 @@ $ gmail-yaml-filters --prune my-filters.yaml
 
 # Do both of these steps at once.
 $ gmail-yaml-filters --sync my-filters.yaml
+
+# See what would happen but don't apply any changes.
+$ gmail-yaml-filters --dry-run --sync my-filters.yaml
 ```
 
 ## Sample Configuration
