@@ -1,4 +1,4 @@
-# 0.5
+# 0.5.1
 
 * Added `--dry-run` flag for the cautious souls out there
 
