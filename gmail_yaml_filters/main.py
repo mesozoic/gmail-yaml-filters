@@ -11,12 +11,14 @@ from functools import total_ordering
 from itertools import chain
 from lxml import etree
 import argparse
+import re
 import sys
 import yaml
 
 from gmail_yaml_filters.upload import get_gmail_service
 from gmail_yaml_filters.upload import upload_ruleset
 from gmail_yaml_filters.upload import prune_filters_not_in_ruleset
+from gmail_yaml_filters.upload import prune_labels_not_in_ruleset
 
 
 """
@@ -616,11 +618,16 @@ def ruleset_to_xml(ruleset):
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.set_defaults(action='xml')
-    parser.add_argument('-n', '--dry-run', dest='dry_run', action='store_true', default=False)
-    parser.add_argument('--upload', dest='action', action='store_const', const='upload')
+    parser.add_argument('-n', '--dry-run', action='store_true', default=False)
+    parser.add_argument('filename', metavar='FILE', default='-')
+    # Actions
     parser.add_argument('--prune', dest='action', action='store_const', const='prune')
     parser.add_argument('--sync', dest='action', action='store_const', const='upload_prune')
-    parser.add_argument('filename', metavar='FILE', default='-')
+    parser.add_argument('--upload', dest='action', action='store_const', const='upload')
+    parser.add_argument('--prune-labels', dest='action', action='store_const', const='prune_labels')
+    # Options for --prune-labels
+    parser.add_argument('--only-matching', default=r'.*', metavar='REGEX')
+    parser.add_argument('--ignore-errors', action='store_true', default=False)
     return parser
 
 
@@ -648,6 +655,11 @@ def main():
         gmail = get_gmail_service()
         upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
         prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
+    elif args.action == 'prune_labels':
+        gmail = get_gmail_service()
+        match = re.compile(args.only_matching).match if args.only_matching else None
+        prune_labels_not_in_ruleset(ruleset, service=gmail, match=match, dry_run=args.dry_run,
+                                    continue_on_http_error=args.ignore_errors)
     else:
         raise argparse.ArgumentError('%r not recognized' % args.action)
 

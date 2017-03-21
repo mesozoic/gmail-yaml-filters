@@ -4,12 +4,14 @@
 from __future__ import print_function
 
 from collections import defaultdict
+from operator import itemgetter
 import argparse
 import os
 import sys
 
 # google-api-python-client dependencies
 import apiclient.discovery
+import googleapiclient.errors
 import httplib2
 import oauth2client.client
 import oauth2client.file
@@ -50,7 +52,7 @@ ACTION_KEY_MAP = {
 }
 
 
-def _rule_actions_to_dict(rule):
+def _rule_to_label_actions_dict(rule):
     result = defaultdict(set)
 
     for action in rule.flatten().values():
@@ -170,7 +172,7 @@ def rule_to_resource(rule, labels):
                 labels.get_or_create(label_name)['id']
                 for label_name in label_names
             )
-            for key, label_names in _rule_actions_to_dict(rule).items()
+            for key, label_names in _rule_to_label_actions_dict(rule).items()
         }
     }
 
@@ -191,15 +193,12 @@ def upload_ruleset(ruleset, service=None, dry_run=False):
             print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
             # Strip out defaultdict and set; they won't be JSON-serializable
             filter_data['action'] = {key: list(values) for key, values in filter_data['action'].items()}
-            if dry_run:
-                continue
             request = service.users().settings().filters().create(userId='me', body=filter_data)
             if not dry_run:
                 request.execute()
 
 
-def find_filters_not_in_ruleset(ruleset, service=None, dry_run=False):
-    service = service or get_gmail_service()
+def find_filters_not_in_ruleset(ruleset, service, dry_run=False):
     known_labels = GmailLabels(service, dry_run=dry_run)
     known_filters = GmailFilters(service)
     ruleset_filters = [rule_to_resource(rule, known_labels) for rule in ruleset]
@@ -208,14 +207,43 @@ def find_filters_not_in_ruleset(ruleset, service=None, dry_run=False):
         yield prunable_filter
 
 
-def prune_filters_not_in_ruleset(ruleset, service=None, dry_run=False):
+def prune_filters_not_in_ruleset(ruleset, service, dry_run=False):
     for prunable_filter in find_filters_not_in_ruleset(ruleset, service):
         print('Deleting', prunable_filter['id'], prunable_filter['criteria'], prunable_filter['action'], file=sys.stderr)
-        if dry_run:
-            continue
         request = service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
         if not dry_run:
             request.execute()
+
+
+def prune_labels_not_in_ruleset(ruleset, service, match=None, dry_run=False,
+                                continue_on_http_error=False):
+    known_labels = GmailLabels(service, dry_run=dry_run)
+    ruleset_filters = [rule_to_resource(rule, known_labels) for rule in ruleset]
+
+    used_label_ids = set(
+        label_id
+        for filter_dict in ruleset_filters
+        for label_ids in filter_dict['action'].values()
+        for label_id in label_ids
+    )
+
+    unused_labels = [
+        label
+        for label in GmailLabels(service, dry_run=dry_run)
+        if label['id'] not in used_label_ids
+        and label['type'] == 'user'
+        and (match is None or match(label['name']))
+    ]
+
+    for unused_label in sorted(unused_labels, key=itemgetter('name')):
+        print('Deleting label', unused_label['name'], '({})'.format(unused_label['id']), file=sys.stderr)
+        request = service.users().labels().delete(userId='me', id=unused_label['id'])
+        if not dry_run:
+            try:
+                request.execute()
+            except googleapiclient.errors.HttpError as exc:
+                if not continue_on_http_error:
+                    raise
 
 
 def get_gmail_service():
