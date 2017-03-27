@@ -650,7 +650,8 @@ def main():
     elif args.action == 'upload':
         upload_ruleset(ruleset, dry_run=args.dry_run)
     elif args.action == 'prune':
-        prune_filters_not_in_ruleset(ruleset, dry_run=args.dry_run)
+        gmail = get_gmail_service()
+        prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     elif args.action == 'upload_prune':
         gmail = get_gmail_service()
         upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)

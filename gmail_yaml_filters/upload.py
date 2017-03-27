@@ -241,7 +241,7 @@ def prune_labels_not_in_ruleset(ruleset, service, match=None, dry_run=False,
         if not dry_run:
             try:
                 request.execute()
-            except googleapiclient.errors.HttpError as exc:
+            except googleapiclient.errors.HttpError:
                 if not continue_on_http_error:
                     raise
 

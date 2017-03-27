@@ -1,3 +1,7 @@
+# 0.6.1
+
+Fixed a bug that broke `--prune` as a standalone command.
+
 # 0.6
 
 * Added `--prune-labels` action to remove unused labels. This action also supports
