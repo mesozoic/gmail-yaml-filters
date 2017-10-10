@@ -146,12 +146,8 @@ class GmailFilters(object):
         self.reload()
 
     def reload(self):
-        self.filters = self.gmail.users().settings().filters().list(userId='me').execute()['filter']
-        self.matchable_filters = [
-            _simplify_filter(existing_filter)
-            for existing_filter
-            in self.gmail.users().settings().filters().list(userId='me').execute()['filter']
-        ]
+        self.filters = self.gmail.users().settings().filters().list(userId='me').execute().get('filter', [])
+        self.matchable_filters = [_simplify_filter(existing) for existing in self.filters]
 
     def __iter__(self):
         return iter(self.filters)
