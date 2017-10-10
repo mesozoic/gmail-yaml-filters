@@ -1,3 +1,7 @@
+# 0.6.2
+
+Fixed #3 (crash on `--upload` when a user had no existing filters)
+
 # 0.6.1
 
 Fixed a bug that broke `--prune` as a standalone command.
