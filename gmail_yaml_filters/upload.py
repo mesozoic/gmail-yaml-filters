@@ -194,7 +194,7 @@ def upload_ruleset(ruleset, service=None, dry_run=False):
                 request.execute()
 
 
-def find_filters_not_in_ruleset(ruleset, service, dry_run=False):
+def find_filters_not_in_ruleset(ruleset, service, dry_run):
     known_labels = GmailLabels(service, dry_run=dry_run)
     known_filters = GmailFilters(service)
     ruleset_filters = [rule_to_resource(rule, known_labels) for rule in ruleset]
@@ -204,7 +204,8 @@ def find_filters_not_in_ruleset(ruleset, service, dry_run=False):
 
 
 def prune_filters_not_in_ruleset(ruleset, service, dry_run=False):
-    for prunable_filter in find_filters_not_in_ruleset(ruleset, service):
+    prunable_filters = find_filters_not_in_ruleset(ruleset, service, dry_run)
+    for prunable_filter in prunable_filters:
         print('Deleting', prunable_filter['id'], prunable_filter['criteria'], prunable_filter['action'], file=sys.stderr)
         request = service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
         if not dry_run:

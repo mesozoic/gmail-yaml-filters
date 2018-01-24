@@ -1,3 +1,7 @@
+# 0.7.1
+
+Fix a bug where --prune or --sync would create labels even in --dry-run
+
 # 0.7
 
 Allow dicts in `for_each` with keys used in rule strings
