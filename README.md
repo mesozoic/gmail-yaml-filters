@@ -87,6 +87,13 @@ $ gmail-yaml-filters --dry-run --sync my-filters.yaml
   rule:
     to: "{item[0]}@mycompany.com"
     label: "{item[1]}"
+-
+  for_each:
+    - {list: list1, domain: example.com}
+    - {list: list2, domain: whatever.com}
+  rule:
+    to: "{list}@{domain}"
+    label: "{list}"
 ```
 
 ## Configuration

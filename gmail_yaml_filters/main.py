@@ -449,64 +449,7 @@ class RuleSet(object):
     """
     Contains a set of Rule instances.
 
-    You can create these using dictionaries:
-
-    >>> def sample_rule(name):
-    ...     return {'from': '{0}@microsoft.com'.format(name), 'trash': True}
-    >>> ruleset = RuleSet.from_object(sample_rule('bill'))
-    >>> sorted(ruleset)
-    ... # doctest: +NORMALIZE_WHITESPACE
-    [Rule(from=[RuleCondition(u'from', u'bill@microsoft.com')],
-          shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
-
-    Or using lists of dictionaries:
-
-    >>> sorted(RuleSet.from_object([sample_rule('bill'), sample_rule('steve')]))
-    ... # doctest: +NORMALIZE_WHITESPACE
-    [Rule(from=[RuleCondition(u'from', u'bill@microsoft.com')],
-          shouldTrash=[RuleAction(u'shouldTrash', u'true')]),
-     Rule(from=[RuleCondition(u'from', u'steve@microsoft.com')],
-          shouldTrash=[RuleAction(u'shouldTrash', u'true')])]
-
-    Or with nested conditions:
-
-    >>> ruleset = RuleSet.from_object({
-    ...     'from': 'steve@aapl.com',
-    ...     'archive': True,
-    ...     'more': {
-    ...         'subject': 'stop ignoring me',
-    ...         'archive': False,
-    ...     }
-    ... })
-    >>> sorted(ruleset)
-    ... # doctest: +NORMALIZE_WHITESPACE
-    [Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
-          shouldArchive=[RuleAction(u'shouldArchive', u'false')],
-          subject=[RuleCondition(u'subject', u'"stop ignoring me"')]),
-     Rule(from=[RuleCondition(u'from', u'steve@aapl.com')],
-          shouldArchive=[RuleAction(u'shouldArchive', u'true')])]
-
-    Or even with loops:
-
-    >>> ruleset = RuleSet.from_object({
-    ...     'for_each': ['steve', 'jony', 'tim'],
-    ...     'rule': {
-    ...         'from': '{item}@aapl.com',
-    ...         'star': True,
-    ...         'important': True,
-    ...         'more': [
-    ...             {'label': 'everyone', 'to': 'everyone@aapl.com'},
-    ...         ]
-    ...     }
-    ... })
-    >>> sorted(rule.conditions for rule in ruleset)
-    ... # doctest: +NORMALIZE_WHITESPACE
-    [[RuleCondition(u'from', u'jony@aapl.com')],
-     [RuleCondition(u'from', u'jony@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')],
-     [RuleCondition(u'from', u'steve@aapl.com')],
-     [RuleCondition(u'from', u'steve@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')],
-     [RuleCondition(u'from', u'tim@aapl.com')],
-     [RuleCondition(u'from', u'tim@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')]]
+    See `gmail_yaml_filters.tests.test_ruleset` or the README for examples.
     """
 
     more_key = 'more'
@@ -515,6 +458,9 @@ class RuleSet(object):
 
     def __init__(self):
         self._rules = OrderedDict()
+
+    def __len__(self):
+        return len(self._rules)
 
     def __iter__(self):
         for rule_key, rule in self._rules.iteritems():
@@ -579,7 +525,10 @@ class RuleSet(object):
         for index, item in enumerate(data[cls.foreach_key]):
             item_ruleset = cls.from_object(data[cls.foreach_rule_key], base_rule=base_rule)
             for rule in item_ruleset:
-                rule.apply_format(index=index, item=item)
+                if isinstance(item, dict):
+                    rule.apply_format(index=index, **item)
+                else:
+                    rule.apply_format(index=index, item=item)
             ruleset.update(item_ruleset)
 
         return ruleset
