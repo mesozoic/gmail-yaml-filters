@@ -1,3 +1,7 @@
+# 0.7
+
+Allow dicts in `for_each` with keys used in rule strings
+
 # 0.6.2
 
 Fixed #3 (crash on `--upload` when a user had no existing filters)
