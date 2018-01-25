@@ -1,3 +1,7 @@
+# 0.7.2
+
+Support Unicode labels in --dry-run mode
+
 # 0.7.1
 
 Fix a bug where --prune or --sync would create labels even in --dry-run
