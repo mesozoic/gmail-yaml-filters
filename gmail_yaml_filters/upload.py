@@ -70,7 +70,7 @@ def _rule_to_label_actions_dict(rule):
 
 def fake_label(name):
     return {
-        "id": 'FakeLabel_{}'.format(name.replace(' ', '-')),
+        "id": u'FakeLabel_{}'.format(name.replace(' ', '-')),
         "name": name,
         "messageListVisibility": 'labelHide',
         "labelListVisibility": 'hide',
