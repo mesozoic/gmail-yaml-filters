@@ -220,6 +220,7 @@ class RuleAction(_RuleConstruction):
         'trash': 'shouldTrash',
         'delete': 'shouldTrash',
         'not_spam': 'shouldNeverSpam',
+        'forward': 'forwardTo',
         # TODO: support smart labels / tabs (Personal, Social, etc.)
     }
 

@@ -110,6 +110,7 @@ Supported conditions:
 Supported actions:
 
 * `archive`
+* `forward`
 * `important` (also `mark_as_important`)
 * `label`
 * `not_important` (also `never_mark_as_important`)
