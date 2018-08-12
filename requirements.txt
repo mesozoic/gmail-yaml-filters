@@ -1,2 +1,3 @@
 lxml
 pyyaml
+oauth2client
