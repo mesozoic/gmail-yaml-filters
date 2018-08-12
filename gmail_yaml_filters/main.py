@@ -595,7 +595,7 @@ def main():
     ruleset = RuleSet.from_object(rule for rule in data if not rule.get('ignore'))
 
     if args.action == 'xml':
-        print(ruleset_to_xml(ruleset))
+        print(ruleset_to_xml(ruleset).encode('utf-8'))
     elif args.action == 'upload':
         upload_ruleset(ruleset, dry_run=args.dry_run)
     elif args.action == 'prune':
