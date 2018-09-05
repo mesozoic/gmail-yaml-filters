@@ -85,7 +85,8 @@ class _RuleConstruction(object):
     def remap_key_and_value(cls, key, value):
         if key in cls.formatter_map:
             original = dict(key=key, value=value)
-            key_fmt, value_fmt = cls.formatter_map[key]
+            converter = cls.formatter_map[key]
+            key_fmt, value_fmt = converter(key, value) if callable(converter) else converter
             key = key_fmt.format(**original)
             value = value_fmt.format(**original)
 
@@ -121,6 +122,13 @@ class _RuleConstruction(object):
         return isinstance(other, self.__class__) and (self.key, self.value) < (other.key, other.value)
 
 
+def _has_attachment(key, value):
+    if key == 'has' and value == 'attachment':
+        return ('hasTheWord', 'has:attachment')
+    else:
+        return (key, value)
+
+
 class RuleCondition(_RuleConstruction):
     """
     Represents a condition for a Gmail filter.
@@ -150,6 +158,15 @@ class RuleCondition(_RuleConstruction):
 
     >>> RuleCondition('list', 'exec.msft.com', negate=True)
     RuleCondition(u'hasTheWord', u'-list:(exec.msft.com)')
+
+    There is also a shortcut for 'has: attachment' to mean
+    'hasTheWord: "has:attachment"'. This mimics what most users
+    would expect, but does lead to a bit of inconsistency:
+
+    >>> RuleCondition('has', 'attachment')
+    RuleCondition(u'hasTheWord', u'has:attachment')
+    >>> RuleCondition('match', 'attachment')
+    RuleCondition(u'hasTheWord', u'attachment')
     """
 
     identifier_map = {
@@ -164,6 +181,7 @@ class RuleCondition(_RuleConstruction):
     }
 
     formatter_map = {
+        'has': _has_attachment,
         'list': ('has', 'list:({value})'),
     }
 

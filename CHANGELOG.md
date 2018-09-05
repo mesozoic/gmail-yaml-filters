@@ -1,3 +1,7 @@
+# 0.7.3
+
+Support `has: attachment` and `has_attachment: true` as rule conditions.
+
 # 0.7.2
 
 Support Unicode labels in --dry-run mode
