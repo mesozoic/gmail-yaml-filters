@@ -1,6 +1,7 @@
-# 0.7.3
+# 0.7.4
 
-Support `has: attachment` and `has_attachment: true` as rule conditions.
+* Explicitly include `oauth2client` in library dependencies.
+* Support `has: attachment` and `has_attachment: true` as rule conditions.
 
 # 0.7.2
 
