@@ -583,7 +583,7 @@ def ruleset_to_etree(ruleset):
         etree.SubElement(entry, 'id').text = 'tag:mail.google.com,2008:filter:{0}'.format(abs(hash(rule)))
         etree.SubElement(entry, 'updated').text = datetime.now().replace(microsecond=0).isoformat() + 'Z'
         etree.SubElement(entry, 'content')
-        for construct in rule.flatten().itervalues():
+        for construct in six.itervalues(rule.flatten()):
             etree.SubElement(
                 entry,
                 '{http://schemas.google.com/apps/2006}property',
