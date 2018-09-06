@@ -359,6 +359,9 @@ class Rule(object):
         ]
         return '{0}({1})'.format(self.__class__.__name__, ', '.join(sorted(rule_reprs)))
 
+    def __hash__(self):
+        return hash(self.sortable_data)
+
     def __eq__(self, other):
         return self.sortable_data == other.sortable_data
 
@@ -415,7 +418,7 @@ class Rule(object):
 
     @property
     def sortable_data(self):
-        return tuple(sorted(self.data.items()))
+        return _sortable(self.data)
 
     @property
     def conditions(self):
@@ -461,6 +464,19 @@ class Rule(object):
             for construction_key, construction_objs in six.iteritems(construction_dict):
                 for construction in construction_objs:
                     construction.apply_format(**format_vars)
+
+
+def _sortable(obj):
+    if isinstance(obj, dict):
+        return tuple(sorted(
+            (key, _sortable(value))
+            for (key, value)
+            in six.iteritems(obj)
+        ))
+    elif isinstance(obj, (tuple, list)):
+        return tuple(obj)
+    else:
+        return obj
 
 
 class RuleSet(object):
