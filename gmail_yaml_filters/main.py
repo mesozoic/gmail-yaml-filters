@@ -593,9 +593,9 @@ def ruleset_to_etree(ruleset):
     return xml
 
 
-def ruleset_to_xml(ruleset):
+def ruleset_to_xml(ruleset, pretty_print=True, encoding='utf8'):
     dom = ruleset_to_etree(ruleset)
-    return etree.tostring(dom, pretty_print=True, encoding='utf8').decode('utf8')
+    return etree.tostring(dom, pretty_print=pretty_print, encoding=encoding).decode(encoding)
 
 
 def create_parser():

@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import unicode_literals
+
+
 from gmail_yaml_filters.main import RuleSet
 from gmail_yaml_filters.main import RuleAction
 from gmail_yaml_filters.main import RuleCondition
