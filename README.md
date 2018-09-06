@@ -4,6 +4,8 @@
 
 A quick tool for generating Gmail filters from YAML rules.
 
+Interested in helping? See [CONTRIBUTING.md](CONTRIBUTING.md) for a few guidelines.
+
 ## Getting Started
 
 By default, the command line script will generate XML to stdout, which
