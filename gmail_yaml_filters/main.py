@@ -10,11 +10,12 @@ from datetime import datetime
 from functools import total_ordering
 from itertools import chain
 from lxml import etree
+from operator import attrgetter
 import argparse
 import re
+import six
 import sys
 import yaml
-import six
 
 from gmail_yaml_filters.upload import get_gmail_service
 from gmail_yaml_filters.upload import upload_ruleset
@@ -583,7 +584,7 @@ def ruleset_to_etree(ruleset):
         etree.SubElement(entry, 'id').text = 'tag:mail.google.com,2008:filter:{0}'.format(abs(hash(rule)))
         etree.SubElement(entry, 'updated').text = datetime.now().replace(microsecond=0).isoformat() + 'Z'
         etree.SubElement(entry, 'content')
-        for construct in six.itervalues(rule.flatten()):
+        for construct in sorted(six.itervalues(rule.flatten()), key=attrgetter('key')):
             etree.SubElement(
                 entry,
                 '{http://schemas.google.com/apps/2006}property',
