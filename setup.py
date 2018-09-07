@@ -8,10 +8,12 @@ setup(
     author_email='mesozoic@users.noreply.github.com',
     description='A quick tool for generating Gmail filters from YAML rules.',
     url='https://github.com/mesozoic/gmail-yaml-filters',
-    version='0.7.4',
+    version='0.8',
     classifiers=[
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
     ],
     packages=find_packages('.'),
     entry_points={
@@ -22,7 +24,8 @@ setup(
     install_requires=[
         'google-api-python-client',
         'lxml',
-        'PyYAML',
         'oauth2client',
+        'pyyaml',
+        'six',
     ],
 )
