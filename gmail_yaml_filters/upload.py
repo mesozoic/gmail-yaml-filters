@@ -123,7 +123,7 @@ class GmailLabels(object):
         try:
             return self[name]
         except KeyError:
-            print('Creating label', name.encode('utf-8'), file=sys.stderr)
+            print('Creating label', name, file=sys.stderr)
             if self.dry_run:
                 self[name] = fake_label(name)
                 return self[name]
