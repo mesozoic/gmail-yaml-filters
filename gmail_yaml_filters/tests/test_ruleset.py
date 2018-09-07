@@ -99,3 +99,31 @@ def test_foreach_dict():
         [RuleCondition('from', 'jony@aapl.com'), RuleCondition('to', 'design@aapl.com')],
         [RuleCondition('from', 'phil@aapl.com'), RuleCondition('to', 'marketing@aapl.com')],
     ]
+
+
+def test_foreach_dict_within_nested_condition():
+    """
+    Make sure that key/value substitution works within nested conditions.
+    """
+    ruleset = RuleSet.from_object({
+        'for_each': [
+            {'team': 'retail'},
+            {'team': 'marketing'},
+            {'team': 'design'},
+        ],
+        'rule': {
+            'has': {
+                'any': [
+                    'to:{team}@tsla.com',
+                    'cc:{team}@tsla.com',
+                    'bcc:{team}@tsla.com',
+                ],
+            },
+            'star': True,
+        }
+    })
+    assert sorted(rule.conditions for rule in ruleset) == [
+        [RuleCondition(u'hasTheWord', u'(bcc:design@tsla.com OR cc:design@tsla.com OR to:design@tsla.com)')],
+        [RuleCondition(u'hasTheWord', u'(bcc:marketing@tsla.com OR cc:marketing@tsla.com OR to:marketing@tsla.com)')],
+        [RuleCondition(u'hasTheWord', u'(bcc:retail@tsla.com OR cc:retail@tsla.com OR to:retail@tsla.com)')],
+    ]

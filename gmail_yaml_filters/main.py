@@ -64,9 +64,10 @@ class KeyMismatch(RuntimeError):
 
 @total_ordering
 class _RuleConstruction(object):
-    # Maps kwargs and YAML keys to Google values
+    #: Maps kwargs and YAML keys to Google values
     identifier_map = None
-    # Maps special keys to tuples of key/value format strings
+
+    #: Maps special keys to functions of the signature (key, value) => (key, value)
     formatter_map = {}
 
     def __init__(self, key, value, validate_value=True):
@@ -84,12 +85,8 @@ class _RuleConstruction(object):
     @classmethod
     def remap_key_and_value(cls, key, value):
         if key in cls.formatter_map:
-            original = dict(key=key, value=value)
             converter = cls.formatter_map[key]
-            key_fmt, value_fmt = converter(key, value) if callable(converter) else converter
-            key = key_fmt.format(**original)
-            value = value_fmt.format(**original)
-
+            return converter(key, value) if callable(converter) else converter
         return key, value
 
     @classmethod
@@ -182,7 +179,7 @@ class RuleCondition(_RuleConstruction):
 
     formatter_map = {
         'has': _has_attachment,
-        'list': ('has', 'list:({value})'),
+        'list': lambda key, value: ('has', 'list:({})'.format(value)),
     }
 
     def __init__(self, key, value, validate_value=True, negate=False):
