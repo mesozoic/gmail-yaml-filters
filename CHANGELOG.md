@@ -1,6 +1,6 @@
 # 0.8
 
-* Support Python 3.6 and Python 3.7
+* Support and test Python 3.6 and Python 3.7
 
 # 0.7.4
 
