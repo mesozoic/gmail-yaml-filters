@@ -1,3 +1,7 @@
+# 0.8.1
+
+* Fix #5 (crash on an existing Gmail filter with no actions)
+
 # 0.8
 
 * Support and test Python 3.6 and Python 3.7
