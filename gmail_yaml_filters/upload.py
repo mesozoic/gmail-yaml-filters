@@ -136,7 +136,11 @@ class GmailLabels(object):
 def _simplify_filter(filter_dict):
     return {
         'criteria': filter_dict['criteria'],
-        'action': {key: set(values) for key, values in filter_dict['action'].items()},
+        'action': {
+            key: set(values)
+            for key, values
+            in filter_dict.get('action', {}).items()
+        },
     }
 
 
