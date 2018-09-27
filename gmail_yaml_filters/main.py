@@ -4,7 +4,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-from collections import Iterable
 from collections import OrderedDict
 from datetime import datetime
 from functools import total_ordering
@@ -16,6 +15,12 @@ import re
 import six
 import sys
 import yaml
+
+# avoid breaking when py38 is released
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 from gmail_yaml_filters.upload import get_gmail_service
 from gmail_yaml_filters.upload import upload_ruleset
