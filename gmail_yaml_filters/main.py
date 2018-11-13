@@ -214,7 +214,7 @@ class RuleCondition(_RuleConstruction):
         'deliveredto': _search_operator('deliveredto'),
         'filename': _search_operator('filename'),
         'is': _search_operator('is'),
-        'has_label': _search_operator('label'),
+        'labeled': _search_operator('label'),
         'larger': _search_operator('larger'),
         'list': _search_operator('list'),
         'rfc822msgid': _search_operator('rfc822msgid'),

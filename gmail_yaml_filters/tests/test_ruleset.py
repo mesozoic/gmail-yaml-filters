@@ -34,8 +34,14 @@ def test_condition_has_special():
 
 
 def test_condition_has_label():
-    assert _flat({'has_label': 'whatever'}) == {
+    assert _flat({'labeled': 'whatever'}) == {
         'hasTheWord': RuleCondition('hasTheWord', 'label:(whatever)'),
+    }
+
+
+def test_condition_does_not_have_label():
+    assert _flat({'labeled': '-whatever'}) == {
+        'doesNotHaveTheWord': RuleCondition('doesNotHaveTheWord', 'label:(whatever)'),
     }
 
 
