@@ -8,6 +8,10 @@ from gmail_yaml_filters.main import RuleAction
 from gmail_yaml_filters.main import RuleCondition
 
 
+def _flat(rule_obj):
+    return sorted(RuleSet.from_object(rule_obj))[0].flatten()
+
+
 def sample_rule(name):
     return {
         'from': '{}@msft.com'.format(name),
@@ -15,10 +19,44 @@ def sample_rule(name):
     }
 
 
+# Test how identifier_map and formatter_map operate
+
+def test_condition_has():
+    assert _flat({'has': 'whatever'}) == {
+        'hasTheWord': RuleCondition('hasTheWord', 'whatever'),
+    }
+
+
+def test_condition_has_special():
+    assert _flat({'has': 'drive'}) == {
+        'hasTheWord': RuleCondition('hasTheWord', 'has:drive'),
+    }
+
+
+def test_condition_has_label():
+    assert _flat({'has_label': 'whatever'}) == {
+        'hasTheWord': RuleCondition('hasTheWord', 'label:(whatever)'),
+    }
+
+
+def test_condition_is():
+    assert _flat({'is': 'snoozed'}) == {
+        'hasTheWord': RuleCondition('hasTheWord', 'is:(snoozed)'),
+    }
+
+
+def test_condition_is_not():
+    assert _flat({'is': '-snoozed'}) == {
+        'doesNotHaveTheWord': RuleCondition('doesNotHaveTheWord', 'is:(snoozed)'),
+    }
+
+
+# Test generating rulesets from complex nested objects
+
 def test_ruleset_from_dict():
-    rules = RuleSet.from_object(sample_rule('bill'))
+    rules = sorted(RuleSet.from_object(sample_rule('bill')))
     assert len(rules) == 1
-    assert sorted(rules)[0].flatten() == {
+    assert rules[0].flatten() == {
         'from': RuleCondition('from', 'bill@msft.com'),
         'shouldTrash': RuleAction('shouldTrash', 'true'),
     }

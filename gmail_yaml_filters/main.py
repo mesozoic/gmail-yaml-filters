@@ -126,11 +126,30 @@ class _RuleConstruction(object):
         return isinstance(other, self.__class__) and (self.key, self.value) < (other.key, other.value)
 
 
-def _has_attachment(key, value):
-    if key == 'has' and value == 'attachment':
-        return ('hasTheWord', 'has:attachment')
+def _format_has_shortcuts(key, value):
+    if key == 'has' and value in (
+        'attachment',
+        'document',
+        'drive',
+        'presentation',
+        'spreadsheet',
+        'youtube',
+        'userlabels',
+        'nouserlabels',
+    ):
+        return ('hasTheWord', 'has:{}'.format(value))
     else:
         return (key, value)
+
+
+def _search_operator(keyword):
+    def formatter(key, value):
+        condition = 'hasTheWord'
+        if value and value[0] == '-':
+            condition = 'doesNotHaveTheWord'
+            value = value[1:]
+        return (condition, '{}:({})'.format(keyword, value))
+    return formatter
 
 
 class RuleCondition(_RuleConstruction):
@@ -185,8 +204,22 @@ class RuleCondition(_RuleConstruction):
     }
 
     formatter_map = {
-        'has': _has_attachment,
-        'list': lambda key, value: ('has', 'list:({})'.format(value)),
+        # allows `has: attachment`, `has: drive`, etc. in YAML
+        'has': _format_has_shortcuts,
+
+        # allows `bcc: whatever`, `is: starred`, etc. in YAML
+        'bcc': _search_operator('bcc'),
+        'category': _search_operator('category'),
+        'cc': _search_operator('cc'),
+        'deliveredto': _search_operator('deliveredto'),
+        'filename': _search_operator('filename'),
+        'is': _search_operator('is'),
+        'has_label': _search_operator('label'),
+        'larger': _search_operator('larger'),
+        'list': _search_operator('list'),
+        'rfc822msgid': _search_operator('rfc822msgid'),
+        'size': _search_operator('size'),
+        'smaller': _search_operator('smaller'),
     }
 
     def __init__(self, key, value, validate_value=True, negate=False):
