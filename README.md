@@ -102,16 +102,27 @@ $ gmail-yaml-filters --dry-run --sync my-filters.yaml
 
 Supported conditions:
 
-* `does_not_have` (also `missing`, `no_match`)
-* `from`
 * `has` (also `match`)
-* `list`
+* `does_not_have` (also `missing`, `no_match`)
 * `subject`
-* `to`
+* `list`
+* `labeled`
+* `from`, `to`, `cc`, and `bcc`
+* `category`
+* `deliveredto`
+* `filename`
+* `larger`
+* `smaller`
+* `size`
+* `rfc822msgid`
+* `is` and `has` work like [Gmail's search operators](https://support.google.com/mail/answer/7190?hl=en), for example:
+  * `has: attachment` is translated to `match: "has:attachment"`
+  * `is: -snoozed` is translated to `no_match: "is:snoozed"`
 
 Supported actions:
 
 * `archive`
+* `forward`
 * `important` (also `mark_as_important`)
 * `label`
 * `not_important` (also `never_mark_as_important`)

@@ -1,3 +1,8 @@
+# 0.9
+
+* Add support for a number of Gmail search operators
+* Add support for `forward:` action
+
 # 0.8.1
 
 * Fix #5 (crash on an existing Gmail filter with no actions)
