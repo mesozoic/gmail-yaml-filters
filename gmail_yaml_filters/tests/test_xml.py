@@ -30,3 +30,11 @@ def test_ruleset_to_xml(ruleset):
     xml = ruleset_to_xml(ruleset, pretty_print=False)
     assert '<apps:property name="from" value="alice@aapl.com"/><apps:property name="shouldTrash" value="true"/></entry>' in xml
     assert '<apps:property name="from" value="🐶@aapl.com"/><apps:property name="shouldTrash" value="true"/></entry>' in xml
+
+
+def test_ruleset_with_empty_rule():
+    """
+    Tests that we don't generate rules without any actions.
+    """
+    xml = ruleset_to_xml(RuleSet.from_object([{'from': 'alice'}]))
+    assert '<entry>' not in xml

@@ -46,6 +46,7 @@ def test_nested_conditions():
             'archive': False,
         }
     })
+    assert len(ruleset) == 2
     assert sorted(ruleset)[0].flatten() == {
         'from': RuleCondition('from', 'steve@aapl.com'),
         'subject': RuleCondition('subject', '"stop ignoring me"'),
