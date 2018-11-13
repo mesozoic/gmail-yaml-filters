@@ -80,3 +80,16 @@ def test_upload_filters_without_action(fake_gmail):
             'action': {'removeLabelIds': ['FakeLabel_INBOX']},
         },
     }
+
+
+def test_upload_forward(fake_gmail):
+    ruleset = RuleSet.from_object([{'from': 'alice', 'forward': 'bob'}])
+    upload_ruleset(ruleset, fake_gmail)
+    assert fake_gmail.users().settings().filters().create.call_count == 1
+    assert fake_gmail.users().settings().filters().create.call_args_list[0][1] == {
+        'userId': 'me',
+        'body': {
+            'criteria': {'from': 'alice'},
+            'action': {'forward': 'bob'},
+        },
+    }

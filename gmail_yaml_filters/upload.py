@@ -41,7 +41,6 @@ def _rule_conditions_to_dict(rule):
 
 
 ACTION_KEY_MAP = {
-    'label': None,
     'shouldAlwaysMarkAsImportant': ('add', ['IMPORTANT']),
     'shouldArchive': ('remove', ['INBOX']),
     'shouldMarkAsRead': ('remove', ['UNREAD']),
@@ -52,18 +51,20 @@ ACTION_KEY_MAP = {
 }
 
 
-def _rule_to_label_actions_dict(rule):
+def _rule_to_actions(rule):
     result = defaultdict(set)
 
     for action in rule.flatten().values():
-        # This is how we know whether we have actions or conditions. Could be smarter.
-        if action.key not in ACTION_KEY_MAP:
-            continue
         if action.key == 'label':
             result['addLabelIds'].add(action.value)
-        else:
+        elif action.key == 'forwardTo':
+            result['forward'] = action.value
+        elif action.key in ACTION_KEY_MAP:
             label_action, label_values = ACTION_KEY_MAP[action.key]
             result['{}LabelIds'.format(label_action)].update(label_values)
+        else:
+            # This means it's a condition, not an action.
+            pass
 
     return result
 
@@ -165,15 +166,15 @@ class GmailFilters(object):
 
 
 def rule_to_resource(rule, labels):
+    actions = _rule_to_actions(rule)
+
+    for key in ('addLabelIds', 'removeLabelIds'):
+        if key in actions:
+            actions[key] = list(set(labels.get_or_create(label)['id'] for label in actions[key]))
+
     return {
         'criteria': _rule_conditions_to_dict(rule),
-        'action': {
-            key: set(
-                labels.get_or_create(label_name)['id']
-                for label_name in label_names
-            )
-            for key, label_names in _rule_to_label_actions_dict(rule).items()
-        }
+        'action': actions,
     }
 
 
@@ -192,7 +193,7 @@ def upload_ruleset(ruleset, service=None, dry_run=False):
         if not known_filters.exists(filter_data):
             print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
             # Strip out defaultdict and set; they won't be JSON-serializable
-            filter_data['action'] = {key: list(values) for key, values in filter_data['action'].items()}
+            filter_data['action'] = dict(filter_data['action'])
             request = service.users().settings().filters().create(userId='me', body=filter_data)
             if not dry_run:
                 request.execute()

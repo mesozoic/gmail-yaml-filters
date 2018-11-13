@@ -51,6 +51,18 @@ def test_condition_is_not():
     }
 
 
+def test_action_archive():
+    assert _flat({'archive': True}) == {
+        'shouldArchive': RuleAction('shouldArchive', 'true'),
+    }
+
+
+def test_action_forward():
+    assert _flat({'forward': 'someone@example.com'}) == {
+        'forwardTo': RuleAction('forwardTo', 'someone@example.com'),
+    }
+
+
 # Test generating rulesets from complex nested objects
 
 def test_ruleset_from_dict():
