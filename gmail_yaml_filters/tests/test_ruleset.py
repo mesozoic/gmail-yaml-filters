@@ -8,8 +8,12 @@ from gmail_yaml_filters.main import RuleAction
 from gmail_yaml_filters.main import RuleCondition
 
 
+def rule(rule_obj):
+    return sorted(RuleSet.from_object(rule_obj))[0]
+
+
 def _flat(rule_obj):
-    return sorted(RuleSet.from_object(rule_obj))[0].flatten()
+    return rule(rule_obj).flatten()
 
 
 def sample_rule(name):
@@ -67,6 +71,12 @@ def test_action_forward():
     assert _flat({'forward': 'someone@example.com'}) == {
         'forwardTo': RuleAction('forwardTo', 'someone@example.com'),
     }
+
+
+def test_publishable():
+    assert not rule({'from': 'alice'}).publishable
+    assert not rule({'archive': True}).publishable
+    assert rule({'from': 'alice', 'archive': True}).publishable
 
 
 # Test generating rulesets from complex nested objects

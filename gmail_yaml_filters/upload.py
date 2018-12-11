@@ -184,7 +184,7 @@ def upload_ruleset(ruleset, service=None, dry_run=False):
     known_filters = GmailFilters(service)
 
     for rule in ruleset:
-        if not rule.actions:
+        if not rule.publishable:
             continue
 
         # See https://developers.google.com/gmail/api/v1/reference/users/settings/filters#resource

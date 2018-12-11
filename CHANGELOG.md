@@ -1,3 +1,7 @@
+# 0.9.2
+
+* Fix #7 by allowing actions with no conditions except for in nested rules
+
 # 0.9.1
 
 * Fix #17 (include XML declaration at top of file)
