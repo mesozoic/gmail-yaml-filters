@@ -2,6 +2,7 @@
 
 * Add support for a number of Gmail search operators
 * Add support for `forward:` action
+* Fix #17 (include XML declaration at top of file)
 
 # 0.8.1
 

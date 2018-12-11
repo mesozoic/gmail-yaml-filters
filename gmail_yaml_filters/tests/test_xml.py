@@ -28,6 +28,7 @@ def test_ruleset_to_xml(ruleset):
     A hideous, basic, but working integration test for turning rules into XML.
     """
     xml = ruleset_to_xml(ruleset, pretty_print=False)
+    assert xml.startswith("<?xml version='1.0' encoding='utf8'?>")
     assert '<apps:property name="from" value="alice@aapl.com"/><apps:property name="shouldTrash" value="true"/></entry>' in xml
     assert '<apps:property name="from" value="🐶@aapl.com"/><apps:property name="shouldTrash" value="true"/></entry>' in xml
 
