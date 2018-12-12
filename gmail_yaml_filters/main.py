@@ -441,6 +441,14 @@ class Rule(object):
         self._actions.setdefault(action.key, set()).add(action)
 
     @property
+    def publishable(self):
+        """
+        Determines whether a rule is going to be accepted by the Gmail API.
+        Returns True if the rule has at least one condition and one action.
+        """
+        return bool(self.actions and self.conditions)
+
+    @property
     def data(self):
         """
         Returns a single dictionary representing all of
@@ -614,7 +622,7 @@ def ruleset_to_etree(ruleset):
     })
     etree.SubElement(xml, 'title').text = 'Mail Filters'
     for rule in sorted(ruleset):
-        if not rule.actions:
+        if not rule.publishable:
             continue
         entry = etree.SubElement(xml, 'entry')
         etree.SubElement(entry, 'category', term='filter')

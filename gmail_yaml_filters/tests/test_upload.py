@@ -66,10 +66,11 @@ def test_remote_filters_without_action(fake_gmail):
     GmailFilters(fake_gmail)
 
 
-def test_upload_filters_without_action(fake_gmail):
+def test_upload_excludes_non_publishable(fake_gmail):
     ruleset = RuleSet.from_object([
         {'from': 'alice', 'archive': True},
         {'from': 'bob'},  # test that rules with no actions are ignored
+        {'archive': True},  # test that rules with no conditions are ignored
     ])
     upload_ruleset(ruleset, fake_gmail)
     assert fake_gmail.users().settings().filters().create.call_count == 1
