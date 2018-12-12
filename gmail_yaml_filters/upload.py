@@ -191,9 +191,10 @@ def upload_ruleset(ruleset, service=None, dry_run=False):
         filter_data = rule_to_resource(rule, known_labels)
 
         if not known_filters.exists(filter_data):
+            filter_data['action'] = dict(filter_data['action'])
+            filter_data['criteria'] = dict(filter_data['criteria'])
             print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
             # Strip out defaultdict and set; they won't be JSON-serializable
-            filter_data['action'] = dict(filter_data['action'])
             request = service.users().settings().filters().create(userId='me', body=filter_data)
             if not dry_run:
                 request.execute()
