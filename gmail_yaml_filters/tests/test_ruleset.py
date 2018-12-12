@@ -3,9 +3,9 @@
 from __future__ import unicode_literals
 
 
-from gmail_yaml_filters.main import RuleSet
-from gmail_yaml_filters.main import RuleAction
-from gmail_yaml_filters.main import RuleCondition
+from gmail_yaml_filters.ruleset import RuleSet
+from gmail_yaml_filters.ruleset import RuleAction
+from gmail_yaml_filters.ruleset import RuleCondition
 
 
 def rule(rule_obj):

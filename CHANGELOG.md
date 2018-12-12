@@ -1,3 +1,7 @@
+# Unpublished
+
+* Moved RuleSet and related classes/functions into its own module
+
 # 0.9.2
 
 * Fix #7 by allowing actions with no conditions except for in nested rules

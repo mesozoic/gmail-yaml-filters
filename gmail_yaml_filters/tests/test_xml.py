@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 
 import pytest
-from gmail_yaml_filters.main import RuleSet
+from gmail_yaml_filters.ruleset import RuleSet
 from gmail_yaml_filters.main import ruleset_to_xml
 
 
