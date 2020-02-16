@@ -125,6 +125,7 @@ Supported actions:
 * `forward`
 * `important` (also `mark_as_important`)
 * `label`
+  * (to display in the Categorize tab of the Gmail interface, you can use CATEGORY_PERSONAL, CATEGORY_SOCIAL, CATEGORY_PROMOTIONS, CATEGORY_UPDATES or CATEGORY_FORUMS)
 * `not_important` (also `never_mark_as_important`)
 * `not_spam`
 * `read` (also `mark_as_read`)
