@@ -249,8 +249,9 @@ def prune_labels_not_in_ruleset(ruleset, service, match=None, dry_run=False,
                     raise
 
 
-def get_gmail_service():
-    credentials = get_gmail_credentials()
+def get_gmail_service(credentials=None):
+    if not credentials:
+        credentials = get_gmail_credentials()
     http = credentials.authorize(httplib2.Http())
     return apiclient.discovery.build('gmail', 'v1', http=http)
 
@@ -260,7 +261,7 @@ def get_gmail_credentials(
         'https://www.googleapis.com/auth/gmail.settings.basic',
         'https://www.googleapis.com/auth/gmail.labels',
     ],
-    client_secret_file='client_secret.json',
+    client_secret_path='client_secret.json',
     application_name='gmail_yaml_filters',
 ):
     credential_dir = os.path.join(os.path.expanduser('~'), '.credentials')
@@ -271,7 +272,7 @@ def get_gmail_credentials(
     store = oauth2client.file.Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
-        flow = oauth2client.client.flow_from_clientsecrets(client_secret_file, scopes)
+        flow = oauth2client.client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = application_name
         flags_parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
         credentials = oauth2client.tools.run_flow(flow, store, flags=flags_parser.parse_args([]))
