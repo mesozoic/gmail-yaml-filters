@@ -1,5 +1,6 @@
-# Unpublished
+# 0.9.3
 
+* Added better `--help` strings and mention `client_secret.json` in README
 * Moved RuleSet and related classes/functions into its own module
 
 # 0.9.2
