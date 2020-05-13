@@ -19,7 +19,10 @@ $ gmail-yaml-filters my-filters.yaml > my-filters.xml
 ## Synchronization via Gmail API
 
 If you are the trusting type, you can authorize the script to
-upload new filters (and remove any obsolete filters) via Gmail's API.
+upload new filters and remove obsolete filters via Gmail's API.
+Before using any of these commands, you will need to create
+[`client_secret.json`](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred)
+and store it in the same directory as your YAML file.
 
 ```bash
 # Upload all filters (and create new labels) from the configuration file
@@ -124,8 +127,12 @@ Supported actions:
 * `archive`
 * `forward`
 * `important` (also `mark_as_important`)
-* `label`
-  * (to display in the Categorize tab of the Gmail interface, you can use CATEGORY_PERSONAL, CATEGORY_SOCIAL, CATEGORY_PROMOTIONS, CATEGORY_UPDATES or CATEGORY_FORUMS)
+* `label`, including support for Gmail's [category tabs](https://developers.google.com/gmail/api/guides/labels):
+  * `CATEGORY_PERSONAL`
+  * `CATEGORY_SOCIAL`
+  * `CATEGORY_PROMOTIONS`
+  * `CATEGORY_UPDATES`
+  * `CATEGORY_FORUMS`
 * `not_important` (also `never_mark_as_important`)
 * `not_spam`
 * `read` (also `mark_as_read`)
