@@ -5,7 +5,6 @@ from __future__ import print_function
 
 from collections import defaultdict
 from operator import itemgetter
-import argparse
 import os
 import sys
 
@@ -263,19 +262,28 @@ def get_gmail_credentials(
     ],
     client_secret_path='client_secret.json',
     application_name='gmail_yaml_filters',
+    oauth2client_flags=None,
 ):
     credential_dir = os.path.join(os.path.expanduser('~'), '.credentials')
     credential_path = os.path.join(credential_dir, application_name + '.json')
-    if not os.path.exists(credential_dir):
-        os.makedirs(credential_dir)
 
-    store = oauth2client.file.Storage(credential_path)
-    credentials = store.get()
+    if os.path.exists(credential_path):
+        store = oauth2client.file.Storage(credential_path)
+        credentials = store.get()
+    else:
+        store = None
+        credentials = None
+
     if not credentials or credentials.invalid:
         flow = oauth2client.client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = application_name
-        flags_parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
-        credentials = oauth2client.tools.run_flow(flow, store, flags=flags_parser.parse_args([]))
+
+        if not store:
+            if not os.path.isdir(credential_dir):
+                os.makedirs(credential_dir)
+            store = oauth2client.file.Storage(credential_path)
+
+        credentials = oauth2client.tools.run_flow(flow, store, flags=oauth2client_flags)
         print('Storing credentials to', credential_path, file=sys.stderr)
 
     return credentials

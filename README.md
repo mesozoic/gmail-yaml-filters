@@ -22,7 +22,9 @@ If you are the trusting type, you can authorize the script to
 upload new filters and remove obsolete filters via Gmail's API.
 Before using any of these commands, you will need to create
 [`client_secret.json`](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred)
-and store it in the same directory as your YAML file.
+and store it in the same directory as your YAML file. Use the
+`--noauth_local_webserver` option when using the secret to
+authenticate for the first time.
 
 ```bash
 # Upload all filters (and create new labels) from the configuration file
