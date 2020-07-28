@@ -90,21 +90,23 @@ def main():
     if not args.client_secret:
         args.client_secret = default_client_secret
 
-    credentials = get_gmail_credentials(client_secret_path=args.client_secret)
-
     if args.action == 'xml':
         print(ruleset_to_xml(ruleset))
-    elif args.action == 'upload':
-        upload_ruleset(ruleset, dry_run=args.dry_run)
+        return
+
+    # every command below this point involves the Gmail API
+
+    credentials = get_gmail_credentials(client_secret_path=args.client_secret)
+    gmail = get_gmail_service(credentials)
+
+    if args.action == 'upload':
+        upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     elif args.action == 'prune':
-        gmail = get_gmail_service(credentials)
         prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     elif args.action == 'upload_prune':
-        gmail = get_gmail_service(credentials)
         upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
         prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     elif args.action == 'prune_labels':
-        gmail = get_gmail_service(credentials)
         match = re.compile(args.only_matching).match if args.only_matching else None
         prune_labels_not_in_ruleset(ruleset, service=gmail, match=match, dry_run=args.dry_run,
                                     continue_on_http_error=args.ignore_errors)

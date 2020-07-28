@@ -1,3 +1,7 @@
+# 0.9.4
+
+* Fix #23 (no such file or directory `client_secret.json` when running locally)
+
 # 0.9.3
 
 * Added better `--help` strings and mention `client_secret.json` in README
