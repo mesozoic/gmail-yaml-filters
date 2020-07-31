@@ -10,6 +10,6 @@ upload: venv_build clean
 	venv_build/bin/twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
 
 venv_%:
-	virtualenv -p python2.7 $@
+	virtualenv -p python3 $@
 	$@/bin/pip install --upgrade pip
 	$@/bin/pip install setuptools twine wheel

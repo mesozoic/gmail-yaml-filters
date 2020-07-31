@@ -98,6 +98,7 @@ def main():
 
     credentials = get_gmail_credentials(client_secret_path=args.client_secret,
                                         oauth2client_flags=args)
+
     gmail = get_gmail_service(credentials)
 
     if args.action == 'upload':

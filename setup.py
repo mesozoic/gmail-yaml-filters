@@ -16,13 +16,14 @@ setup(
     long_description=contents('README.md'),
     long_description_content_type='text/markdown',
     url='https://github.com/mesozoic/gmail-yaml-filters',
-    version='0.9.3',
+    version='0.9.4',
     classifiers=[
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
     packages=find_packages('.'),
     entry_points={
