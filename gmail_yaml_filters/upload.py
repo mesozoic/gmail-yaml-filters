@@ -263,19 +263,18 @@ def get_gmail_credentials(
     ],
     client_secret_path='client_secret.json',
     application_name='gmail_yaml_filters',
+    credential_store=os.path.join(os.path.expanduser('~'), '.credentials', 'gmail_yaml_filters.json')
 ):
-    credential_dir = os.path.join(os.path.expanduser('~'), '.credentials')
-    credential_path = os.path.join(credential_dir, application_name + '.json')
-    if not os.path.exists(credential_dir):
-        os.makedirs(credential_dir)
+    if not os.path.exists(os.path.dirname(os.path.abspath(credential_store))):
+        os.makedirs(os.path.dirname(os.path.abspath(credential_store)))
 
-    store = oauth2client.file.Storage(credential_path)
+    store = oauth2client.file.Storage(os.path.abspath(credential_store))
     credentials = store.get()
     if not credentials or credentials.invalid:
         flow = oauth2client.client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = application_name
         flags_parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
         credentials = oauth2client.tools.run_flow(flow, store, flags=flags_parser.parse_args([]))
-        print('Storing credentials to', credential_path, file=sys.stderr)
+        print('Storing credentials to', credential_store, file=sys.stderr)
 
     return credentials
