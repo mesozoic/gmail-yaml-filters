@@ -54,7 +54,7 @@ def create_parser():
                         help='do not make any API calls to Gmail')
     parser.add_argument('--client-secret', metavar='CLIENT_SECRET_FILE', nargs='?',
                         help='path to client_secret.json; default is wherever the configuration file is located')
-    parser.add_argument('--credential-store', metavar='APPLICATION_NAME', nargs='?',
+    parser.add_argument('--credential-store', metavar='CREDENTIAL_STORE', nargs='?',
                         help='Credential store for one gmail account, if you want to configure multi gmail accounts use a different file for each account. Default: "~/.credentials/gmail_yaml_filters.json"',
                         default=os.path.join(os.path.expanduser('~'), '.credentials', 'gmail_yaml_filters.json'))
 
