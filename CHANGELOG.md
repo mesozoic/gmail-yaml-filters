@@ -1,3 +1,7 @@
+# 0.9.x
+
+* Fix #18 added `--credential-store` to support different gmail accounts
+
 # 0.9.4
 
 * Fix #23 (no such file or directory `client_secret.json` when running locally)
