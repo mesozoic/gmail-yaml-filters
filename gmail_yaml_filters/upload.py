@@ -275,7 +275,9 @@ def get_gmail_credentials(
         flow = oauth2client.client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = application_name
         flags_parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
-        credentials = oauth2client.tools.run_flow(flow, store, flags=flags_parser.parse_args([]))
+        flags=flags_parser.parse_args([])
+        flags.noauth_local_webserver = True
+        credentials = oauth2client.tools.run_flow(flow, store, flags)
         print('Storing credentials to', credential_path, file=sys.stderr)
 
     return credentials
