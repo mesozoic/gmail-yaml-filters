@@ -178,6 +178,7 @@ class RuleCondition(_RuleConstruction):
         'does_not_have': 'doesNotHaveTheWord',
         'missing': 'doesNotHaveTheWord',
         'no_match': 'doesNotHaveTheWord',
+	'smartlabel': 'smartLabelToApply',
     }
 
     formatter_map = {
