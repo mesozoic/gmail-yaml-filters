@@ -1,3 +1,7 @@
+# 0.9.5
+
+* Fix #28 (pruning a filter with no actions would cause a crash)
+
 # 0.9.4
 
 * Fix #23 (no such file or directory `client_secret.json` when running locally)
