@@ -212,7 +212,7 @@ def find_filters_not_in_ruleset(ruleset, service, dry_run):
 def prune_filters_not_in_ruleset(ruleset, service, dry_run=False):
     prunable_filters = find_filters_not_in_ruleset(ruleset, service, dry_run)
     for prunable_filter in prunable_filters:
-        print('Deleting', prunable_filter['id'], prunable_filter['criteria'], prunable_filter['action'], file=sys.stderr)
+        print('Deleting', prunable_filter, file=sys.stderr)
         request = service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
         if not dry_run:
             request.execute()

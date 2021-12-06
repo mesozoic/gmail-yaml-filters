@@ -16,7 +16,7 @@ setup(
     long_description=contents('README.md'),
     long_description_content_type='text/markdown',
     url='https://github.com/mesozoic/gmail-yaml-filters',
-    version='0.10',
+    version='0.9.5',
     classifiers=[
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
