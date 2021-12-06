@@ -30,7 +30,7 @@ Pull requests are welcome! Please keep the following guidelines in mind:
    the codebase, I will prefer adding to the `tests` submodule going forward.
 
 3. Ensure your build passes, both locally (run `tox`) and on
-   [Travis](https://travis-ci.org/mesozoic/gmail-yaml-filters/branches).
+   [GitHub Actions](https://github.com/mesozoic/gmail-yaml-filters/actions/workflows/tests.yml).
    The project uses flake8 for stylistic consistency; please do not ignore any
    failures you see from that command.
 
