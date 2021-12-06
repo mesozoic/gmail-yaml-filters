@@ -1,6 +1,6 @@
 # gmail-yaml-filters
 
-[![Build Status](https://travis-ci.org/mesozoic/gmail-yaml-filters.svg?branch=master)](https://travis-ci.org/mesozoic/gmail-yaml-filters)
+[![Build Status](https://github.com/mesozoic/gmail-yaml-filters/workflows/Tests/badge.svg?branch=master)](https://github.com/mesozoic/gmail-yaml-filters/actions?workflow=Tests)
 
 A quick tool for generating Gmail filters from YAML rules.
 
