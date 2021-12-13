@@ -178,6 +178,7 @@ class RuleCondition(_RuleConstruction):
         'does_not_have': 'doesNotHaveTheWord',
         'missing': 'doesNotHaveTheWord',
         'no_match': 'doesNotHaveTheWord',
+	'smartlabel': 'smartLabelToApply',
     }
 
     formatter_map = {
@@ -598,7 +599,7 @@ def ruleset_to_etree(ruleset):
         'apps': 'http://schemas.google.com/apps/2006',
     })
     etree.SubElement(xml, 'title').text = 'Mail Filters'
-    for rule in sorted(ruleset):
+    for rule in ruleset:
         if not rule.publishable:
             continue
         entry = etree.SubElement(xml, 'entry')

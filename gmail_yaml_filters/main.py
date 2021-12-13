@@ -57,6 +57,8 @@ def create_parser():
     # Actions
     parser.add_argument('--upload', dest='action', action='store_const', const='upload',
                         help='create filters and labels in Gmail')
+    parser.add_argument('--delete', dest='action', action='store_const', const='delete',
+                        help='Deletes all filters in Gmail')
     parser.add_argument('--prune', dest='action', action='store_const', const='prune',
                         help='delete any Gmail filters that are not defined in the configuration file')
     parser.add_argument('--sync', dest='action', action='store_const', const='upload_prune',
@@ -99,7 +101,10 @@ def main():
     credentials = get_gmail_credentials(client_secret_path=args.client_secret)
     gmail = get_gmail_service(credentials)
 
-    if args.action == 'upload':
+    if args.action == 'delete':
+        emptyruleset={}
+        prune_filters_not_in_ruleset(emptyruleset, service=gmail, dry_run=args.dry_run)
+    elif args.action == 'upload':
         upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     elif args.action == 'prune':
         prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
