@@ -241,6 +241,7 @@ class RuleAction(_RuleConstruction):
     """
     identifier_map = {
         'label': 'label',
+        'categorize': 'smartLabelToApply',
         'important': 'shouldAlwaysMarkAsImportant',
         'mark_as_important': 'shouldAlwaysMarkAsImportant',
         'not_important': 'shouldNeverMarkAsImportant',

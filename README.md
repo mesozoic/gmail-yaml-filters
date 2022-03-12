@@ -127,12 +127,13 @@ Supported actions:
 * `archive`
 * `forward`
 * `important` (also `mark_as_important`)
-* `label`, including support for Gmail's [category tabs](https://developers.google.com/gmail/api/guides/labels):
-  * `CATEGORY_PERSONAL`
-  * `CATEGORY_SOCIAL`
-  * `CATEGORY_PROMOTIONS`
-  * `CATEGORY_UPDATES`
-  * `CATEGORY_FORUMS`
+* `label`
+* `categorize`, smart labels for Gmail's category tabs. Supported values:
+  * `^smartlabel_personal` (Primary tab)
+  * `^smartlabel_social` (Social tab)
+  * `^smartlabel_promo` (Promotions tab)
+  * `^smartlabel_notification` (Updates tab)
+  * `^smartlabel_group` (Forums tab)
 * `not_important` (also `never_mark_as_important`)
 * `not_spam`
 * `read` (also `mark_as_read`)
