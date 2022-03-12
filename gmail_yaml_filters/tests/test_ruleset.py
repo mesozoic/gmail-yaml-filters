@@ -134,6 +134,7 @@ def test_foreach():
             'from': '{item}@aapl.com',
             'star': True,
             'important': True,
+            'categorize': '^smartlabel_personal',
             'more': [
                 {'label': 'everyone', 'to': 'everyone@aapl.com'},
             ]
@@ -164,6 +165,7 @@ def test_foreach_dict():
             'from': '{email}@aapl.com',
             'to': '{team}@aapl.com',
             'star': True,
+            'categorize': '^smartlabel_notification',
         }
     })
     assert sorted(rule.conditions for rule in ruleset) == [

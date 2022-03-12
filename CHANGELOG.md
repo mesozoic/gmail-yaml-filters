@@ -1,3 +1,7 @@
+# 0.9.6
+
+* Fix #33 (implement smart labels as `categorize` action and remove documentation about CATEGORY_* labels that do not place emails into the tab categories.
+
 # 0.9.5
 
 * Fix #28 (pruning a filter with no actions would cause a crash)
