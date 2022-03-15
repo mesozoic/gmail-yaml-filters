@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "gmail-yaml-filters"
+version = "0.10.0"
+description = "A quick tool for generating Gmail filters from YAML rules."
+authors = ["Alex Levy <mesozoic@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/mesozoic/gmail-yaml-filters"
+homepage = "https://github.com/mesozoic/gmail-yaml-filters"
+classifiers = [
+  "Topic :: Communications :: Email :: Filters",
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+google-api-python-client = "^2.40.0"
+lxml = "^4.8.0"
+oauth2client = "^4.1.3"
+PyYAML = "^6.0"
+
+[tool.poetry.scripts]
+gmail-yaml-filters = "gmail_yaml_filters.main:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
