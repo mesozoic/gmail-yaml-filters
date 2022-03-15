@@ -53,6 +53,10 @@ def create_parser():
                         help='do not make any API calls to Gmail')
     parser.add_argument('--client-secret', metavar='CLIENT_SECRET_FILE', nargs='?',
                         help='path to client_secret.json; default is wherever the configuration file is located')
+    parser.add_argument('--credential-store', metavar='CREDENTIAL_STORE', nargs='?',
+                        help='path to persisted credentials; will be written if it does not exist',
+                        default=os.path.join(os.path.expanduser('~'), '.credentials', 'gmail_yaml_filters.json'))
+
     # Actions
     parser.add_argument('--upload', dest='action', action='store_const', const='upload',
                         help='create filters and labels in Gmail')
@@ -95,7 +99,7 @@ def main():
 
     # every command below this point involves the Gmail API
 
-    credentials = get_gmail_credentials(client_secret_path=args.client_secret)
+    credentials = get_gmail_credentials(client_secret_path=args.client_secret, credential_store=args.credential_store)
     gmail = get_gmail_service(credentials)
 
     if args.action == 'upload':

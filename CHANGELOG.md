@@ -1,3 +1,8 @@
+# 0.10.0 (unreleased)
+
+* Fix #18 (support multiple Gmail accounts) by adding `--credential-store` option
+  (thanks to @rbo for pull #29)
+
 # 0.9.5
 
 * Fix #28 (pruning a filter with no actions would cause a crash)
