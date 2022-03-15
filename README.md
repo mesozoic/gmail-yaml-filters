@@ -36,6 +36,17 @@ $ gmail-yaml-filters --sync my-filters.yaml
 
 # See what would happen but don't apply any changes.
 $ gmail-yaml-filters --dry-run --sync my-filters.yaml
+
+# Delete all your filters. (Yikes!)
+$ gmail-yaml-filters --delete-all
+```
+
+If you need to pipe configuration from somewhere else, you can do that
+by passing a single dash as the filename.
+
+```sh
+# (but why would you need to do this?)
+$ cat filters.yaml | gmail-yaml-filters --sync -
 ```
 
 ## Sample Configuration

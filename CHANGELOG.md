@@ -2,6 +2,7 @@
 
 * Fix #18 (support multiple Gmail accounts) by adding `--credential-store` option
   (thanks to @rbo for pull #29)
+* Added `--delete-all` option (thanks to @spacezorro for the idea in #30)
 
 # 0.9.5
 

@@ -46,9 +46,9 @@ def ruleset_to_xml(ruleset, pretty_print=True, encoding='utf8'):
 
 
 def create_parser():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.set_defaults(action='xml')
-    parser.add_argument('filename', metavar='FILTER_FILE', default='-')
+    parser.add_argument('filename', metavar='FILTER_FILE', nargs='?')
     parser.add_argument('-n', '--dry-run', action='store_true', default=False,
                         help='do not make any API calls to Gmail')
     parser.add_argument('--client-secret', metavar='CLIENT_SECRET_FILE', nargs='?',
@@ -64,6 +64,8 @@ def create_parser():
                         help='delete any Gmail filters that are not defined in the configuration file')
     parser.add_argument('--sync', dest='action', action='store_const', const='upload_prune',
                         help='equivalent to --upload and --prune')
+    parser.add_argument('--delete-all', dest='action', action='store_const', const='delete',
+                        help='delete all Gmail filters')
     # Options for --prune-labels
     parser.add_argument('--prune-labels', dest='action', action='store_const', const='prune_labels',
                         help='delete any Gmail labels which are not used in the configuration file')
@@ -75,15 +77,22 @@ def create_parser():
 
 
 def main():
-    args = create_parser().parse_args()
+    parser = create_parser()
+    args = parser.parse_args()
+    default_client_secret = 'client_secret.json'
 
     if args.filename == '-':
-        default_client_secret = 'client_secret.json'
         data = yaml.safe_load(sys.stdin)
-    else:
+    elif args.filename:
         default_client_secret = os.path.join(os.path.dirname(args.filename), 'client_secret.json')
         with open(args.filename) as inputf:
             data = yaml.safe_load(inputf)
+    elif args.action == 'delete':
+        # --delete-all is the only command that works without a filters file
+        data = []
+    else:
+        parser.print_help()
+        sys.exit(1)
 
     if not isinstance(data, list):
         data = [data]
@@ -104,6 +113,8 @@ def main():
 
     if args.action == 'upload':
         upload_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
+    elif args.action == 'delete':
+        prune_filters_not_in_ruleset(RuleSet(), service=gmail, dry_run=args.dry_run)
     elif args.action == 'prune':
         prune_filters_not_in_ruleset(ruleset, service=gmail, dry_run=args.dry_run)
     elif args.action == 'upload_prune':
