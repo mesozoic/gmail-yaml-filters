@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import unicode_literals
 
 from collections import OrderedDict
-from functools import total_ordering
 from datetime import datetime
+from functools import total_ordering
 from itertools import chain
-from lxml import etree
 from operator import attrgetter
+
 import six
+from lxml import etree
 
 # avoid breaking when py38 is released
 try:

@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-
 from __future__ import unicode_literals
 
-
-from gmail_yaml_filters.ruleset import RuleSet
 from gmail_yaml_filters.ruleset import RuleAction
 from gmail_yaml_filters.ruleset import RuleCondition
+from gmail_yaml_filters.ruleset import RuleSet
 
 
 def rule(rule_obj):

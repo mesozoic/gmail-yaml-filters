@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from __future__ import print_function
 
-from collections import defaultdict
-from operator import itemgetter
 import argparse
 import os
 import sys
+from collections import defaultdict
+from operator import itemgetter
 
-# google-api-python-client dependencies
 import apiclient.discovery
 import googleapiclient.errors
 import httplib2

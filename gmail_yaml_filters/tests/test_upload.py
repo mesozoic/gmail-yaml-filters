@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-
 from __future__ import unicode_literals
 
+import pytest
+from mock import MagicMock
+
 from gmail_yaml_filters.ruleset import RuleSet
+from gmail_yaml_filters.upload import fake_label
 from gmail_yaml_filters.upload import GmailFilters
 from gmail_yaml_filters.upload import GmailLabels
-from gmail_yaml_filters.upload import fake_label
 from gmail_yaml_filters.upload import upload_ruleset
-from mock import MagicMock
-import pytest
 
 
 def fake_gmail_filter(name):

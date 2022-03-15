@@ -31,8 +31,7 @@ Pull requests are welcome! Please keep the following guidelines in mind:
 
 3. Ensure your build passes, both locally (run `tox`) and on
    [GitHub Actions](https://github.com/mesozoic/gmail-yaml-filters/actions/workflows/tests.yml).
-   The project uses flake8 for stylistic consistency; please do not ignore any
-   failures you see from that command.
+   Please do not ignore any failures you see from checkers or pre-commit hooks.
 
 4. Update the CHANGELOG and README with any relevant information about what you've done.
 

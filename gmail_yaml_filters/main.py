@@ -1,24 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import unicode_literals
 
-from lxml import etree
 import argparse
 import os
 import re
 import sys
+
 import yaml
+from lxml import etree
 
 from .ruleset import RuleSet
 from .ruleset import ruleset_to_etree
-
 from .upload import get_gmail_credentials
 from .upload import get_gmail_service
-from .upload import upload_ruleset
 from .upload import prune_filters_not_in_ruleset
 from .upload import prune_labels_not_in_ruleset
+from .upload import upload_ruleset
 
 
 """
