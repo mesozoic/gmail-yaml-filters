@@ -9,7 +9,6 @@ from functools import total_ordering
 from itertools import chain
 from operator import attrgetter
 
-import six
 from lxml import etree
 
 # avoid breaking when py38 is released
@@ -20,11 +19,37 @@ except ImportError:
 
 
 def quote_value_if_necessary(value):
-    if ' ' in value and '"' not in value \
-            and not value.startswith('-') \
-            and not (
-                value.startswith('(') and value.endswith(')')
-            ):
+    """
+    >>> quote_value_if_necessary({})
+    {}
+    >>> quote_value_if_necessary(5)
+    5
+    >>> quote_value_if_necessary('foo')
+    'foo'
+    >>> quote_value_if_necessary('foo bar')
+    '"foo bar"'
+    >>> quote_value_if_necessary('foo-bar baz')
+    '"foo-bar baz"'
+
+    # If a string has spaces but also has special characters
+    # (like negation, quote marks, or enclosing parentheses)
+    # we assume the filter author knows what they're doing.
+    >>> quote_value_if_necessary('-foo bar')
+    '-foo bar'
+    >>> quote_value_if_necessary('foo "bar baz"')
+    'foo "bar baz"'
+    >>> quote_value_if_necessary('(foo AND bar AND baz)')
+    '(foo AND bar AND baz)'
+    """
+    if (
+        isinstance(value, str)
+        and ' ' in value
+        and '"' not in value
+        and not value.startswith('-')
+        and not (
+            value.startswith('(') and value.endswith(')')
+        )
+    ):
         return '"{0}"'.format(value)
     return value
 
@@ -78,7 +103,7 @@ class _RuleConstruction(object):
         try:
             return cls.identifier_map[key]
         except KeyError:
-            if key in six.itervalues(cls.identifier_map):
+            if key in cls.identifier_map.values():
                 return key
             else:
                 raise InvalidIdentifier(repr(key))
@@ -215,8 +240,7 @@ class RuleCondition(_RuleConstruction):
 
     @classmethod
     def validate_value(cls, key, value):
-        if isinstance(value, six.string_types):
-            value = quote_value_if_necessary(value)
+        value = quote_value_if_necessary(value)
         return value
 
     @classmethod
@@ -258,7 +282,7 @@ class RuleAction(_RuleConstruction):
     @classmethod
     def validate_value(cls, key, value):
         if isinstance(value, bool):
-            return six.text_type(value).lower()
+            return str(value).lower()
         else:
             return value
 
@@ -285,7 +309,7 @@ def build_compound_conditions(key, compound):
     >>> build_compound_conditions('hasTheWord', {'all': ['foo', 'bar'], 'not': {'any': ['baz', 'blitz']}})
     [RuleCondition(u'hasTheWord', u'(bar AND foo)'), RuleCondition(u'hasTheWord', u'-(baz OR blitz)')]
     """
-    if isinstance(compound, six.string_types):
+    if isinstance(compound, str):
         return [RuleCondition(key, compound)]
 
     invalid_keys = set(compound) - set(['any', 'all', 'not'])
@@ -297,11 +321,11 @@ def build_compound_conditions(key, compound):
     conditions = []
 
     if 'any' in compound:
-        value = [compound['any']] if isinstance(compound['any'], six.string_types) else compound['any']
+        value = [compound['any']] if isinstance(compound['any'], str) else compound['any']
         conditions.append(RuleCondition.or_(key, value))
 
     if 'all' in compound:
-        value = [compound['all']] if isinstance(compound['all'], six.string_types) else compound['all']
+        value = [compound['all']] if isinstance(compound['all'], str) else compound['all']
         conditions.append(RuleCondition.and_(key, value))
 
     if 'not' in compound:
@@ -371,7 +395,7 @@ class Rule(object):
     def __repr__(self):
         rule_reprs = [
             '{0}={1!r}'.format(key, sorted(value) if isinstance(value, list) else value)
-            for key, value in sorted(six.iteritems(self.data))
+            for key, value in sorted(self.data.items())
         ]
         return '{0}({1})'.format(self.__class__.__name__, ', '.join(sorted(rule_reprs)))
 
@@ -385,13 +409,13 @@ class Rule(object):
         return self.sortable_data < other.sortable_data
 
     def update(self, data):
-        for key, value in six.iteritems(dict(data)):
+        for key, value in dict(data).items():
             self.add(key, value)
 
     def add(self, key, value, validate=True):
         if isinstance(value, bool):
             self.add_construction(key, value)
-        elif isinstance(value, six.string_types):
+        elif isinstance(value, str):
             self.add_construction(key, value)
         elif isinstance(value, dict):
             self.add_compound_conditions(key, value)
@@ -434,9 +458,9 @@ class Rule(object):
         data = {}
         if self.base_rule:
             data.update(self.base_rule.data)
-        for condition in list(chain.from_iterable(six.itervalues(self._conditions))):
+        for condition in list(chain.from_iterable(self._conditions.values())):
             data.setdefault(condition.key, []).append(condition)
-        for action in list(chain.from_iterable(six.itervalues(self._actions))):
+        for action in list(chain.from_iterable(self._actions.values())):
             data[action.key] = [action]  # you can only take a given action _once_
         return data
 
@@ -459,7 +483,7 @@ class Rule(object):
     def _separated_constructs(self, construct_class):
         return sorted(
             data_value
-            for data_key, data_values in six.iteritems(self.data)
+            for data_key, data_values in self.data.items()
             for data_value in data_values
             if isinstance(data_value, construct_class)
         )
@@ -470,7 +494,7 @@ class Rule(object):
         and return a single dict of constructs that can be serialized.
         """
         flattened = {}
-        for key, constructs in six.iteritems(self.data):
+        for key, constructs in self.data.items():
             if not constructs:
                 continue
             construct_class = constructs[0].__class__  # we shouldn't ever mix
@@ -485,7 +509,7 @@ class Rule(object):
         the values of conditions and actions.
         """
         for construction_dict in (self._actions, self._conditions):
-            for construction_key, construction_objs in six.iteritems(construction_dict):
+            for construction_key, construction_objs in construction_dict.items():
                 for construction in construction_objs:
                     construction.apply_format(**format_vars)
 
@@ -495,7 +519,7 @@ def _sortable(obj):
         return tuple(sorted(
             (key, _sortable(value))
             for (key, value)
-            in six.iteritems(obj)
+            in obj.items()
         ))
     elif isinstance(obj, (tuple, list)):
         return tuple(obj)
@@ -521,8 +545,7 @@ class RuleSet(object):
         return len(self._rules)
 
     def __iter__(self):
-        for rule_key, rule in six.iteritems(self._rules):
-            yield rule
+        yield from self._rules.values()
 
     def add(self, rule):
         self._rules[hash(rule)] = rule
@@ -607,11 +630,11 @@ def ruleset_to_etree(ruleset):
         etree.SubElement(entry, 'id').text = 'tag:mail.google.com,2008:filter:{0}'.format(abs(hash(rule)))
         etree.SubElement(entry, 'updated').text = datetime.now().replace(microsecond=0).isoformat() + 'Z'
         etree.SubElement(entry, 'content')
-        for construct in sorted(six.itervalues(rule.flatten()), key=attrgetter('key')):
+        for construct in sorted(rule.flatten().values(), key=attrgetter('key')):
             etree.SubElement(
                 entry,
                 '{http://schemas.google.com/apps/2006}property',
                 name=construct.key,
-                value=six.text_type(construct.value),
+                value=str(construct.value),
             )
     return xml

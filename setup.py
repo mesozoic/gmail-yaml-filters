@@ -36,6 +36,5 @@ setup(
         'lxml',
         'oauth2client',
         'pyyaml',
-        'six',
     ],
 )
