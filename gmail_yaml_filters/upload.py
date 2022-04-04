@@ -15,6 +15,8 @@ import oauth2client.client
 import oauth2client.file
 import oauth2client.tools
 
+from . import debug
+
 
 """
 Pushes auto-generated mail filters to the Gmail API.
@@ -122,7 +124,7 @@ class GmailLabels(object):
         try:
             return self[name]
         except KeyError:
-            print('Creating label', name, file=sys.stderr)
+            debug.log_new_label(name)
             if self.dry_run:
                 self[name] = fake_label(name)
                 return self[name]
@@ -191,7 +193,7 @@ def upload_ruleset(ruleset, service=None, dry_run=False):
         if not known_filters.exists(filter_data):
             filter_data['action'] = dict(filter_data['action'])
             filter_data['criteria'] = dict(filter_data['criteria'])
-            print('Creating', filter_data['criteria'], filter_data['action'], file=sys.stderr)
+            debug.log_new_filter(filter_data)
             # Strip out defaultdict and set; they won't be JSON-serializable
             request = service.users().settings().filters().create(userId='me', body=filter_data)
             if not dry_run:
@@ -210,7 +212,7 @@ def find_filters_not_in_ruleset(ruleset, service, dry_run):
 def prune_filters_not_in_ruleset(ruleset, service, dry_run=False):
     prunable_filters = find_filters_not_in_ruleset(ruleset, service, dry_run)
     for prunable_filter in prunable_filters:
-        print('Deleting', prunable_filter, file=sys.stderr)
+        debug.log_delete_filter(prunable_filter)
         request = service.users().settings().filters().delete(userId='me', id=prunable_filter['id'])
         if not dry_run:
             request.execute()
@@ -237,7 +239,7 @@ def prune_labels_not_in_ruleset(ruleset, service, match=None, dry_run=False,
     ]
 
     for unused_label in sorted(unused_labels, key=itemgetter('name')):
-        print('Deleting label', unused_label['name'], '({})'.format(unused_label['id']), file=sys.stderr)
+        debug.log_delete_label(unused_label)
         request = service.users().labels().delete(userId='me', id=unused_label['id'])
         if not dry_run:
             try:
