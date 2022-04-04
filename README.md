@@ -8,11 +8,19 @@ Interested in helping? See [CONTRIBUTING.md](CONTRIBUTING.md) for a few guidelin
 
 ## Getting Started
 
+It's strongly recommended to use a tool like [pipx](https://pypa.github.io/pipx/)
+to install this package in an isolated environment:
+
+```bash
+$ pipx install gmail-yaml-filters
+```
+
+## Generating XML
+
 By default, the command line script will generate XML to stdout, which
 you can then upload to Gmail yourself:
 
 ```bash
-$ pip install gmail-yaml-filters
 $ gmail-yaml-filters my-filters.yaml > my-filters.xml
 ```
 
