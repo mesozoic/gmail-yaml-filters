@@ -1,6 +1,7 @@
 *.egg-info
 *.pyc
 .cache
+.coverage
 .tox
 __pycache__
 build/

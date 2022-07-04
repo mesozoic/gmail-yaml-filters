@@ -1,0 +1,8 @@
+[report]
+show_missing = true
+skip_covered = true
+include =
+    gmail_yaml_filters/*
+
+; increase fail_under as non-integration coverage improves; aim for 100%
+fail_under = 75
