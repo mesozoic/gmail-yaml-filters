@@ -25,15 +25,6 @@ Produces Gmail filter XML files based on a more human-readable YAML spec.
 """
 
 
-# Unicode support. <http://stackoverflow.com/questions/2890146>
-def construct_yaml_str(self, node):
-    return self.construct_scalar(node)
-
-
-yaml.Loader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
-yaml.SafeLoader.add_constructor('tag:yaml.org,2002:str', construct_yaml_str)
-
-
 def ruleset_to_xml(ruleset, pretty_print=True, encoding='utf8'):
     dom = ruleset_to_etree(ruleset)
     chars = etree.tostring(
