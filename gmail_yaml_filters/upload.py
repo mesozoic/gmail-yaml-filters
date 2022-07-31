@@ -60,9 +60,6 @@ def _rule_to_actions(rule):
         elif action.key in ACTION_KEY_MAP:
             label_action, label_values = ACTION_KEY_MAP[action.key]
             result['{}LabelIds'.format(label_action)].update(label_values)
-        else:
-            # This means it's a condition, not an action.
-            pass
 
     return result
 
@@ -151,9 +148,6 @@ class GmailFilters(object):
     def reload(self):
         self.filters = self.gmail.users().settings().filters().list(userId='me').execute().get('filter', [])
         self.matchable_filters = [_simplify_filter(existing) for existing in self.filters]
-
-    def __iter__(self):
-        return iter(self.filters)
 
     def exists(self, other):
         return _simplify_filter(other) in iter(_simplify_filter(f) for f in self.filters)
@@ -247,9 +241,7 @@ def prune_labels_not_in_ruleset(ruleset, service, match=None, dry_run=False,
                     raise
 
 
-def get_gmail_service(credentials=None):
-    if not credentials:
-        credentials = get_gmail_credentials()
+def get_gmail_service(credentials):
     http = credentials.authorize(httplib2.Http())
     return apiclient.discovery.build('gmail', 'v1', http=http)
 
@@ -262,7 +254,7 @@ def get_gmail_credentials(
     client_secret_path='client_secret.json',
     application_name='gmail_yaml_filters',
     credential_store=os.path.join(os.path.expanduser('~'), '.credentials', 'gmail_yaml_filters.json')
-):
+):  # pragma: no cover
     if not os.path.exists(os.path.dirname(os.path.abspath(credential_store))):
         os.makedirs(os.path.dirname(os.path.abspath(credential_store)))
 

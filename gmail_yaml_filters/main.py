@@ -67,26 +67,34 @@ def create_parser():
     return parser
 
 
+def load_data_from_args(action, filename):
+    if action == "delete":
+        return []
+
+    if filename == "-":
+        data = yaml.safe_load(sys.stdin)
+    elif filename:
+        with open(filename) as inputf:
+            data = yaml.safe_load(inputf)
+    else:
+        raise ValueError((action, filename))
+
+    if not isinstance(data, list):
+        data = [data]
+
+    return data
+
+
 def main():
     parser = create_parser()
     args = parser.parse_args()
     default_client_secret = 'client_secret.json'
 
-    if args.filename == '-':
-        data = yaml.safe_load(sys.stdin)
-    elif args.filename:
-        default_client_secret = os.path.join(os.path.dirname(args.filename), 'client_secret.json')
-        with open(args.filename) as inputf:
-            data = yaml.safe_load(inputf)
-    elif args.action == 'delete':
-        # --delete-all is the only command that works without a filters file
-        data = []
-    else:
+    try:
+        data = load_data_from_args(args.action, args.filename)
+    except ValueError:
         parser.print_help()
         sys.exit(1)
-
-    if not isinstance(data, list):
-        data = [data]
 
     ruleset = RuleSet.from_object(rule for rule in data if not rule.get('ignore'))
 

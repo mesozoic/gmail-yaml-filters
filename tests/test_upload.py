@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import googleapiclient.errors
 import pytest
 from mock import MagicMock
 
@@ -8,6 +9,7 @@ from gmail_yaml_filters.ruleset import RuleSet
 from gmail_yaml_filters.upload import fake_label
 from gmail_yaml_filters.upload import GmailFilters
 from gmail_yaml_filters.upload import GmailLabels
+from gmail_yaml_filters.upload import prune_labels_not_in_ruleset
 from gmail_yaml_filters.upload import upload_ruleset
 
 
@@ -94,3 +96,40 @@ def test_upload_forward(fake_gmail):
             'action': {'forward': 'bob'},
         },
     }
+
+
+def test_prune_labels_not_in_ruleset(fake_gmail):
+    ruleset = RuleSet.from_object([{'from': 'alice', 'label': 'one'}])
+    prune_labels_not_in_ruleset(ruleset, fake_gmail)
+    deleted_label_ids = {
+        call_arg[1]['id']
+        for call_arg in fake_gmail.users().labels().delete.call_args_list
+    }
+    assert fake_gmail.users().labels().delete.call_count == 2
+    assert deleted_label_ids == {'FakeLabel_two', 'FakeLabel_three'}
+
+
+def test_prune_labels_not_in_ruleset_raises_http_error(fake_gmail):
+    ruleset = RuleSet.from_object([{'from': 'alice', 'label': 'one'}])
+
+    def raises_error(*args, **kwargs):
+        raise googleapiclient.errors.HttpError(MagicMock(), b'')
+
+    fake_gmail.users().labels().delete().execute.side_effect = raises_error
+
+    with pytest.raises(googleapiclient.errors.HttpError):
+        prune_labels_not_in_ruleset(ruleset, fake_gmail)
+
+    assert fake_gmail.users().labels().delete().execute.call_count == 1
+
+
+def test_prune_labels_not_in_ruleset_continue_on_http_error(fake_gmail):
+    ruleset = RuleSet.from_object([{'from': 'alice', 'label': 'one'}])
+
+    def raises_error(*args, **kwargs):
+        raise googleapiclient.errors.HttpError(MagicMock(), b'')
+
+    fake_gmail.users().labels().delete().execute.side_effect = raises_error
+
+    prune_labels_not_in_ruleset(ruleset, fake_gmail, continue_on_http_error=True)
+    assert fake_gmail.users().labels().delete().execute.call_count == 2
