@@ -349,7 +349,6 @@ class Rule(object):
 
     >>> rule = Rule({'has': 'great discount', 'to': '-bill@microsoft.com'})
     >>> sorted(rule.flatten().items())
-    ... # doctest: +NORMALIZE_WHITESPACE
     [(u'hasTheWord', RuleCondition(u'hasTheWord', u'"great discount"')),
      (u'to', RuleCondition(u'to', u'-bill@microsoft.com'))]
 
