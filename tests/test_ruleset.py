@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import pytest
+
+from gmail_yaml_filters.ruleset import InvalidIdentifier
+from gmail_yaml_filters.ruleset import InvalidRuleType
 from gmail_yaml_filters.ruleset import RuleAction
 from gmail_yaml_filters.ruleset import RuleCondition
 from gmail_yaml_filters.ruleset import RuleSet
@@ -19,6 +23,15 @@ def sample_rule(name):
         'from': '{}@msft.com'.format(name),
         'trash': True,
     }
+
+
+def test_empty_ruleset():
+    assert _flat({}) == {}
+
+
+def test_invalid_rule_type():
+    with pytest.raises(InvalidRuleType):
+        _flat({'has': object()})
 
 
 # Test how identifier_map and formatter_map operate
@@ -57,6 +70,29 @@ def test_condition_is_not():
     assert _flat({'is': '-snoozed'}) == {
         'doesNotHaveTheWord': RuleCondition('doesNotHaveTheWord', 'is:(snoozed)'),
     }
+
+
+def test_condition_any():
+    assert _flat({'has': {'any': ['one', 'two', 'three']}}) == {
+        'hasTheWord': RuleCondition('hasTheWord', '(one OR three OR two)')
+    }
+
+
+def test_condition_all():
+    assert _flat({'has': {'all': ['one', 'two', 'three']}}) == {
+        'hasTheWord': RuleCondition('hasTheWord', '(one AND three AND two)')
+    }
+
+
+def test_condition_not():
+    assert _flat({'has': {'not': {'all': ['one', 'two', 'three']}}}) == {
+        'hasTheWord': RuleCondition('hasTheWord', '-(one AND three AND two)')
+    }
+
+
+def test_condition_invalid_keys():
+    with pytest.raises(KeyError):
+        _flat({'has': {'foo': 'bar'}})
 
 
 def test_action_archive():
@@ -99,6 +135,11 @@ def test_ruleset_from_list():
         'from': RuleCondition('from', 'steve@msft.com'),
         'shouldTrash': RuleAction('shouldTrash', 'true'),
     }
+
+
+def test_invalid_ruleset_object():
+    with pytest.raises(ValueError):
+        RuleSet.from_object(object())
 
 
 def test_nested_conditions():
@@ -145,6 +186,18 @@ def test_foreach():
         [RuleCondition(u'from', u'tim@aapl.com')],
         [RuleCondition(u'from', u'tim@aapl.com'), RuleCondition(u'to', u'everyone@aapl.com')],
     ]
+
+
+def test_foreach_invalid_keys():
+    """
+    Test that invalid keys in a foreach will throw an error.
+    """
+    with pytest.raises(InvalidIdentifier):
+        RuleSet.from_object({
+            'for_each': [],
+            'rule': {},
+            'some_invalid_key': '',
+        })
 
 
 def test_foreach_dict():

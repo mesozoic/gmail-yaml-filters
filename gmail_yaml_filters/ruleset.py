@@ -4,18 +4,13 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from collections import OrderedDict
+from collections.abc import Iterable
 from datetime import datetime
 from functools import total_ordering
 from itertools import chain
 from operator import attrgetter
 
 from lxml import etree
-
-# avoid breaking when py38 is released
-try:
-    from collections.abc import Iterable
-except ImportError:
-    from collections import Iterable
 
 
 def quote_value_if_necessary(value):
@@ -62,15 +57,6 @@ class InvalidRuleType(ValueError):
     pass
 
 
-class KeyMismatch(RuntimeError):
-    def __init__(self, first, second):
-        self.first = first
-        self.second = second
-
-    def __str__(self):
-        return '{0} vs. {1}'.format(repr(self.first), repr(self.second))
-
-
 @total_ordering
 class _RuleConstruction(object):
     #: Maps kwargs and YAML keys to Google values
@@ -110,7 +96,7 @@ class _RuleConstruction(object):
 
     @classmethod
     def validate_value(cls, key, value):
-        return value
+        return value  # pragma: no cover
 
     def apply_format(self, **format_vars):
         self._value = self._value.format(**format_vars)
@@ -340,16 +326,23 @@ class Rule(object):
     Defines a set of conditions and a set of actions to apply to those conditions.
 
     >>> rule = Rule({'from': 'bill@microsoft.com', 'delete': True})
+    >>> rule
+    Rule(from=[RuleCondition('from', 'bill@microsoft.com')],
+         shouldTrash=[RuleAction('shouldTrash', 'true')])
     >>> rule.conditions
     [RuleCondition(u'from', u'bill@microsoft.com')]
     >>> rule.actions
     [RuleAction(u'shouldTrash', u'true')]
 
+    They can be compared for equality:
+
+    >>> Rule({'delete': True, 'from': 'bill@microsoft.com'}) == rule
+    True
+
     Strings with spaces in them will get quoted, but strings without spaces won't:
 
     >>> rule = Rule({'has': 'great discount', 'to': '-bill@microsoft.com'})
     >>> sorted(rule.flatten().items())
-    ... # doctest: +NORMALIZE_WHITESPACE
     [(u'hasTheWord', RuleCondition(u'hasTheWord', u'"great discount"')),
      (u'to', RuleCondition(u'to', u'-bill@microsoft.com'))]
 
@@ -495,8 +488,6 @@ class Rule(object):
         """
         flattened = {}
         for key, constructs in self.data.items():
-            if not constructs:
-                continue
             construct_class = constructs[0].__class__  # we shouldn't ever mix
             if len(constructs) == 1:
                 flattened[key] = construct_class(key, constructs[0].value, validate_value=False)
@@ -515,13 +506,21 @@ class Rule(object):
 
 
 def _sortable(obj):
+    """
+    >>> _sortable(1)
+    1
+    >>> _sortable({1, 2, 3})
+    (1, 2, 3)
+    >>> _sortable({1: 2, 3: 4})
+    ((1, 2), (3, 4))
+    """
     if isinstance(obj, dict):
         return tuple(sorted(
             (key, _sortable(value))
             for (key, value)
             in obj.items()
         ))
-    elif isinstance(obj, (tuple, list)):
+    elif isinstance(obj, (tuple, list, set)):
         return tuple(obj)
     else:
         return obj
