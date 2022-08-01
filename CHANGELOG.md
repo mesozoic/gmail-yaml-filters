@@ -1,4 +1,8 @@
-# 0.10.0 (unreleased)
+# 0.10.1 (unreleased)
+
+* Fix #14 by not sorting filters when generating XML (thanks to @spacezorro)
+
+# 0.10.0
 
 * Fix #18 (support multiple Gmail accounts) by adding `--credential-store` option
   (thanks to @rbo for pull #29)
