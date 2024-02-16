@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from datetime import date
+
 import pytest
 
 from gmail_yaml_filters.ruleset import (
@@ -39,58 +41,29 @@ def test_invalid_rule_type():
 # Test how identifier_map and formatter_map operate
 
 
-def test_condition_has():
-    assert _flat({"has": "whatever"}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "whatever"),
-    }
-
-
-def test_condition_has_special():
-    assert _flat({"has": "drive"}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "has:drive"),
-    }
-
-
-def test_condition_has_label():
-    assert _flat({"labeled": "whatever"}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "label:(whatever)"),
-    }
-
-
-def test_condition_does_not_have_label():
-    assert _flat({"labeled": "-whatever"}) == {
-        "doesNotHaveTheWord": RuleCondition("doesNotHaveTheWord", "label:(whatever)"),
-    }
-
-
-def test_condition_is():
-    assert _flat({"is": "snoozed"}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "is:(snoozed)"),
-    }
-
-
-def test_condition_is_not():
-    assert _flat({"is": "-snoozed"}) == {
-        "doesNotHaveTheWord": RuleCondition("doesNotHaveTheWord", "is:(snoozed)"),
-    }
-
-
-def test_condition_any():
-    assert _flat({"has": {"any": ["one", "two", "three"]}}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "(one OR three OR two)")
-    }
-
-
-def test_condition_all():
-    assert _flat({"has": {"all": ["one", "two", "three"]}}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "(one AND three AND two)")
-    }
-
-
-def test_condition_not():
-    assert _flat({"has": {"not": {"all": ["one", "two", "three"]}}}) == {
-        "hasTheWord": RuleCondition("hasTheWord", "-(one AND three AND two)")
-    }
+@pytest.mark.parametrize(
+    "input,condition,value",
+    [
+        ({"has": "whatever"}, "has", "whatever"),
+        ({"has": "drive"}, "has", "has:drive"),
+        ({"labeled": "whatever"}, "has", "label:(whatever)"),
+        ({"labeled": "-whatever"}, "doesNotHave", "label:(whatever)"),
+        ({"is": "snoozed"}, "has", "is:(snoozed)"),
+        ({"is": "-snoozed"}, "doesNotHave", "is:(snoozed)"),
+        ({"after": date(2024, 2, 15)}, "has", "after:2024-02-15"),
+        ({"before": date(2024, 2, 15)}, "has", "before:2024-02-15"),
+        ({"has": {"any": ["one", "two", "three"]}}, "has", "(one OR three OR two)"),
+        ({"has": {"all": ["one", "two", "three"]}}, "has", "(one AND three AND two)"),
+        (
+            {"has": {"not": {"all": ["one", "two", "three"]}}},
+            "has",
+            "-(one AND three AND two)",
+        ),
+    ],
+)
+def test_flattened_condition(input, condition, value):
+    condition = f"{condition}TheWord"
+    assert _flat(input) == {condition: RuleCondition(condition, value)}
 
 
 def test_condition_invalid_keys():
@@ -98,16 +71,15 @@ def test_condition_invalid_keys():
         _flat({"has": {"foo": "bar"}})
 
 
-def test_action_archive():
-    assert _flat({"archive": True}) == {
-        "shouldArchive": RuleAction("shouldArchive", "true"),
-    }
-
-
-def test_action_forward():
-    assert _flat({"forward": "someone@example.com"}) == {
-        "forwardTo": RuleAction("forwardTo", "someone@example.com"),
-    }
+@pytest.mark.parametrize(
+    "input,condition,value",
+    [
+        ({"archive": True}, "shouldArchive", "true"),
+        ({"forward": "someone@example.com"}, "forwardTo", "someone@example.com"),
+    ],
+)
+def test_flattened_action(input, condition, value):
+    assert _flat(input) == {condition: RuleAction(condition, value)}
 
 
 def test_publishable():

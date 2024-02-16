@@ -4,7 +4,7 @@ from __future__ import print_function, unicode_literals
 
 from collections import OrderedDict
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import date, datetime
 from functools import total_ordering
 from itertools import chain
 from operator import attrgetter
@@ -133,13 +133,15 @@ def _format_has_shortcuts(key, value):
         return (key, value)
 
 
-def _search_operator(keyword):
+def _search_operator(keyword, wrap=True):
     def formatter(key, value):
         condition = "hasTheWord"
         if value and value[0] == "-":
             condition = "doesNotHaveTheWord"
             value = value[1:]
-        return (condition, "{}:({})".format(keyword, value))
+        if wrap:
+            value = f"({value})"
+        return (condition, f"{keyword}:{value}")
 
     return formatter
 
@@ -199,15 +201,20 @@ class RuleCondition(_RuleConstruction):
         # allows `has: attachment`, `has: drive`, etc. in YAML
         "has": _format_has_shortcuts,
         # allows `bcc: whatever`, `is: starred`, etc. in YAML
+        "after": _search_operator("after", wrap=False),
         "bcc": _search_operator("bcc"),
+        "before": _search_operator("before", wrap=False),
         "category": _search_operator("category"),
         "cc": _search_operator("cc"),
         "deliveredto": _search_operator("deliveredto"),
         "filename": _search_operator("filename"),
+        "in": _search_operator("in"),
         "is": _search_operator("is"),
         "labeled": _search_operator("label"),
         "larger": _search_operator("larger"),
         "list": _search_operator("list"),
+        "newer_than": _search_operator("newer_than", wrap=False),
+        "older_than": _search_operator("older_than", wrap=False),
         "rfc822msgid": _search_operator("rfc822msgid"),
         "size": _search_operator("size"),
         "smaller": _search_operator("smaller"),
@@ -427,6 +434,8 @@ class Rule(object):
         elif isinstance(value, Iterable):
             for actual_value in value:
                 self.add(key, actual_value)
+        elif isinstance(value, date):
+            self.add_construction(key, value.isoformat())
         else:
             raise InvalidRuleType(type(value))
 
