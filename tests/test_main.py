@@ -24,7 +24,7 @@ def test_delete_requires_no_file():
 
 
 def test_load_data_from_stdin(monkeypatch):
-    monkeypatch.setattr('sys.stdin', StringIO("foo: bar"))
+    monkeypatch.setattr("sys.stdin", StringIO("foo: bar"))
     assert load_data_from_args("upload", "-") == [{"foo": "bar"}]
 
 

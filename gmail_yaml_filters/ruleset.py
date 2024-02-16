@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -38,12 +37,10 @@ def quote_value_if_necessary(value):
     """
     if (
         isinstance(value, str)
-        and ' ' in value
+        and " " in value
         and '"' not in value
-        and not value.startswith('-')
-        and not (
-            value.startswith('(') and value.endswith(')')
-        )
+        and not value.startswith("-")
+        and not (value.startswith("(") and value.endswith(")"))
     ):
         return '"{0}"'.format(value)
     return value
@@ -105,38 +102,45 @@ class _RuleConstruction(object):
         return hash((self.key, self.value))
 
     def __repr__(self):
-        return '{0}({1!r}, {2!r})'.format(self.__class__.__name__, self.key, self.value)
+        return "{0}({1!r}, {2!r})".format(self.__class__.__name__, self.key, self.value)
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and (self.key, self.value) == (other.key, other.value)
+        return isinstance(other, self.__class__) and (self.key, self.value) == (
+            other.key,
+            other.value,
+        )
 
     def __lt__(self, other):
-        return isinstance(other, self.__class__) and (self.key, self.value) < (other.key, other.value)
+        return isinstance(other, self.__class__) and (self.key, self.value) < (
+            other.key,
+            other.value,
+        )
 
 
 def _format_has_shortcuts(key, value):
-    if key == 'has' and value in (
-        'attachment',
-        'document',
-        'drive',
-        'presentation',
-        'spreadsheet',
-        'youtube',
-        'userlabels',
-        'nouserlabels',
+    if key == "has" and value in (
+        "attachment",
+        "document",
+        "drive",
+        "presentation",
+        "spreadsheet",
+        "youtube",
+        "userlabels",
+        "nouserlabels",
     ):
-        return ('hasTheWord', 'has:{}'.format(value))
+        return ("hasTheWord", "has:{}".format(value))
     else:
         return (key, value)
 
 
 def _search_operator(keyword):
     def formatter(key, value):
-        condition = 'hasTheWord'
-        if value and value[0] == '-':
-            condition = 'doesNotHaveTheWord'
+        condition = "hasTheWord"
+        if value and value[0] == "-":
+            condition = "doesNotHaveTheWord"
             value = value[1:]
-        return (condition, '{}:({})'.format(keyword, value))
+        return (condition, "{}:({})".format(keyword, value))
+
     return formatter
 
 
@@ -181,33 +185,32 @@ class RuleCondition(_RuleConstruction):
     """
 
     identifier_map = {
-        'from': 'from',
-        'to': 'to',
-        'subject': 'subject',
-        'has': 'hasTheWord',
-        'match': 'hasTheWord',
-        'does_not_have': 'doesNotHaveTheWord',
-        'missing': 'doesNotHaveTheWord',
-        'no_match': 'doesNotHaveTheWord',
+        "from": "from",
+        "to": "to",
+        "subject": "subject",
+        "has": "hasTheWord",
+        "match": "hasTheWord",
+        "does_not_have": "doesNotHaveTheWord",
+        "missing": "doesNotHaveTheWord",
+        "no_match": "doesNotHaveTheWord",
     }
 
     formatter_map = {
         # allows `has: attachment`, `has: drive`, etc. in YAML
-        'has': _format_has_shortcuts,
-
+        "has": _format_has_shortcuts,
         # allows `bcc: whatever`, `is: starred`, etc. in YAML
-        'bcc': _search_operator('bcc'),
-        'category': _search_operator('category'),
-        'cc': _search_operator('cc'),
-        'deliveredto': _search_operator('deliveredto'),
-        'filename': _search_operator('filename'),
-        'is': _search_operator('is'),
-        'labeled': _search_operator('label'),
-        'larger': _search_operator('larger'),
-        'list': _search_operator('list'),
-        'rfc822msgid': _search_operator('rfc822msgid'),
-        'size': _search_operator('size'),
-        'smaller': _search_operator('smaller'),
+        "bcc": _search_operator("bcc"),
+        "category": _search_operator("category"),
+        "cc": _search_operator("cc"),
+        "deliveredto": _search_operator("deliveredto"),
+        "filename": _search_operator("filename"),
+        "is": _search_operator("is"),
+        "labeled": _search_operator("label"),
+        "larger": _search_operator("larger"),
+        "list": _search_operator("list"),
+        "rfc822msgid": _search_operator("rfc822msgid"),
+        "size": _search_operator("size"),
+        "smaller": _search_operator("smaller"),
     }
 
     def __init__(self, key, value, validate_value=True, negate=False):
@@ -215,12 +218,14 @@ class RuleCondition(_RuleConstruction):
         self.negate = negate
 
     def negated(self):
-        return self.__class__(self.key, self.value, validate_value=False, negate=(not self.negate))
+        return self.__class__(
+            self.key, self.value, validate_value=False, negate=(not self.negate)
+        )
 
     @property
     def value(self):
         if self.negate:
-            return '-{0}'.format(self._value)
+            return "-{0}".format(self._value)
         else:
             return self._value
 
@@ -232,16 +237,16 @@ class RuleCondition(_RuleConstruction):
     @classmethod
     def joined_by(cls, joiner, key, values):
         validated = [cls.validate_value(key, value) for value in sorted(values)]
-        joined = '({0})'.format(joiner.join(validated))
+        joined = "({0})".format(joiner.join(validated))
         return cls(key, joined, validate_value=False)
 
     @classmethod
     def and_(cls, key, values):
-        return cls.joined_by(' AND ', key, values)
+        return cls.joined_by(" AND ", key, values)
 
     @classmethod
     def or_(cls, key, values):
-        return cls.joined_by(' OR ', key, values)
+        return cls.joined_by(" OR ", key, values)
 
 
 class RuleAction(_RuleConstruction):
@@ -249,20 +254,21 @@ class RuleAction(_RuleConstruction):
     >>> RuleAction('important', True)
     RuleAction(u'shouldAlwaysMarkAsImportant', u'true')
     """
+
     identifier_map = {
-        'label': 'label',
-        'important': 'shouldAlwaysMarkAsImportant',
-        'mark_as_important': 'shouldAlwaysMarkAsImportant',
-        'not_important': 'shouldNeverMarkAsImportant',
-        'never_mark_as_important': 'shouldNeverMarkAsImportant',
-        'archive': 'shouldArchive',
-        'read': 'shouldMarkAsRead',
-        'mark_as_read': 'shouldMarkAsRead',
-        'star': 'shouldStar',
-        'trash': 'shouldTrash',
-        'delete': 'shouldTrash',
-        'not_spam': 'shouldNeverSpam',
-        'forward': 'forwardTo',
+        "label": "label",
+        "important": "shouldAlwaysMarkAsImportant",
+        "mark_as_important": "shouldAlwaysMarkAsImportant",
+        "not_important": "shouldNeverMarkAsImportant",
+        "never_mark_as_important": "shouldNeverMarkAsImportant",
+        "archive": "shouldArchive",
+        "read": "shouldMarkAsRead",
+        "mark_as_read": "shouldMarkAsRead",
+        "star": "shouldStar",
+        "trash": "shouldTrash",
+        "delete": "shouldTrash",
+        "not_spam": "shouldNeverSpam",
+        "forward": "forwardTo",
     }
 
     @classmethod
@@ -298,7 +304,7 @@ def build_compound_conditions(key, compound):
     if isinstance(compound, str):
         return [RuleCondition(key, compound)]
 
-    invalid_keys = set(compound) - set(['any', 'all', 'not'])
+    invalid_keys = set(compound) - set(["any", "all", "not"])
     if invalid_keys:
         raise KeyError(invalid_keys)
 
@@ -306,16 +312,22 @@ def build_compound_conditions(key, compound):
     # and it's better to second-guess their intent than to treat a string like a list of single-letter searches.
     conditions = []
 
-    if 'any' in compound:
-        value = [compound['any']] if isinstance(compound['any'], str) else compound['any']
+    if "any" in compound:
+        value = (
+            [compound["any"]] if isinstance(compound["any"], str) else compound["any"]
+        )
         conditions.append(RuleCondition.or_(key, value))
 
-    if 'all' in compound:
-        value = [compound['all']] if isinstance(compound['all'], str) else compound['all']
+    if "all" in compound:
+        value = (
+            [compound["all"]] if isinstance(compound["all"], str) else compound["all"]
+        )
         conditions.append(RuleCondition.and_(key, value))
 
-    if 'not' in compound:
-        conditions.extend(rule.negated() for rule in build_compound_conditions(key, compound['not']))
+    if "not" in compound:
+        conditions.extend(
+            rule.negated() for rule in build_compound_conditions(key, compound["not"])
+        )
 
     return sorted(conditions)
 
@@ -387,10 +399,10 @@ class Rule(object):
 
     def __repr__(self):
         rule_reprs = [
-            '{0}={1!r}'.format(key, sorted(value) if isinstance(value, list) else value)
+            "{0}={1!r}".format(key, sorted(value) if isinstance(value, list) else value)
             for key, value in sorted(self.data.items())
         ]
-        return '{0}({1})'.format(self.__class__.__name__, ', '.join(sorted(rule_reprs)))
+        return "{0}({1})".format(self.__class__.__name__, ", ".join(sorted(rule_reprs)))
 
     def __hash__(self):
         return hash(self.sortable_data)
@@ -463,14 +475,12 @@ class Rule(object):
 
     @property
     def conditions(self):
-        """Returns a list of this rule's conditions.
-        """
+        """Returns a list of this rule's conditions."""
         return self._separated_constructs(RuleCondition)
 
     @property
     def actions(self):
-        """Returns a list of all this rule's conditions.
-        """
+        """Returns a list of all this rule's conditions."""
         return self._separated_constructs(RuleAction)
 
     def _separated_constructs(self, construct_class):
@@ -490,9 +500,13 @@ class Rule(object):
         for key, constructs in self.data.items():
             construct_class = constructs[0].__class__  # we shouldn't ever mix
             if len(constructs) == 1:
-                flattened[key] = construct_class(key, constructs[0].value, validate_value=False)
+                flattened[key] = construct_class(
+                    key, constructs[0].value, validate_value=False
+                )
             else:
-                flattened[key] = construct_class.and_(key, sorted(c.value for c in constructs))
+                flattened[key] = construct_class.and_(
+                    key, sorted(c.value for c in constructs)
+                )
         return flattened
 
     def apply_format(self, **format_vars):
@@ -515,11 +529,7 @@ def _sortable(obj):
     ((1, 2), (3, 4))
     """
     if isinstance(obj, dict):
-        return tuple(sorted(
-            (key, _sortable(value))
-            for (key, value)
-            in obj.items()
-        ))
+        return tuple(sorted((key, _sortable(value)) for (key, value) in obj.items()))
     elif isinstance(obj, (tuple, list, set)):
         return tuple(obj)
     else:
@@ -533,9 +543,9 @@ class RuleSet(object):
     See `gmail_yaml_filters.tests.test_ruleset` or the README for examples.
     """
 
-    more_key = 'more'
-    foreach_key = 'for_each'
-    foreach_rule_key = 'rule'
+    more_key = "more"
+    foreach_key = "for_each"
+    foreach_rule_key = "rule"
 
     def __init__(self):
         self._rules = OrderedDict()
@@ -559,14 +569,13 @@ class RuleSet(object):
 
     @classmethod
     def from_object(cls, obj, base_rule=None):
-        """Returns a RuleSet from a dictionary or list of rules.
-        """
+        """Returns a RuleSet from a dictionary or list of rules."""
         if isinstance(obj, dict):
             return cls.from_dict(obj, base_rule=base_rule)
         elif isinstance(obj, Iterable):
             return cls.from_iterable(obj, base_rule=base_rule)
         else:
-            raise ValueError('Cannot build {0} from {1}'.format(cls, type(obj)))
+            raise ValueError("Cannot build {0} from {1}".format(cls, type(obj)))
 
     @classmethod
     def from_dict(cls, data, base_rule=None):
@@ -603,7 +612,9 @@ class RuleSet(object):
 
         ruleset = cls()
         for index, item in enumerate(data[cls.foreach_key]):
-            item_ruleset = cls.from_object(data[cls.foreach_rule_key], base_rule=base_rule)
+            item_ruleset = cls.from_object(
+                data[cls.foreach_rule_key], base_rule=base_rule
+            )
             for rule in item_ruleset:
                 if isinstance(item, dict):
                     rule.apply_format(index=index, **item)
@@ -615,24 +626,31 @@ class RuleSet(object):
 
 
 def ruleset_to_etree(ruleset):
-    xml = etree.Element('feed', nsmap={
-        None: 'http://www.w3.org/2005/Atom',
-        'apps': 'http://schemas.google.com/apps/2006',
-    })
-    etree.SubElement(xml, 'title').text = 'Mail Filters'
+    xml = etree.Element(
+        "feed",
+        nsmap={
+            None: "http://www.w3.org/2005/Atom",
+            "apps": "http://schemas.google.com/apps/2006",
+        },
+    )
+    etree.SubElement(xml, "title").text = "Mail Filters"
     for rule in ruleset:
         if not rule.publishable:
             continue
-        entry = etree.SubElement(xml, 'entry')
-        etree.SubElement(entry, 'category', term='filter')
-        etree.SubElement(entry, 'title').text = 'Mail Filter'
-        etree.SubElement(entry, 'id').text = 'tag:mail.google.com,2008:filter:{0}'.format(abs(hash(rule)))
-        etree.SubElement(entry, 'updated').text = datetime.now().replace(microsecond=0).isoformat() + 'Z'
-        etree.SubElement(entry, 'content')
-        for construct in sorted(rule.flatten().values(), key=attrgetter('key')):
+        entry = etree.SubElement(xml, "entry")
+        etree.SubElement(entry, "category", term="filter")
+        etree.SubElement(entry, "title").text = "Mail Filter"
+        etree.SubElement(entry, "id").text = (
+            "tag:mail.google.com,2008:filter:{0}".format(abs(hash(rule)))
+        )
+        etree.SubElement(entry, "updated").text = (
+            datetime.now().replace(microsecond=0).isoformat() + "Z"
+        )
+        etree.SubElement(entry, "content")
+        for construct in sorted(rule.flatten().values(), key=attrgetter("key")):
             etree.SubElement(
                 entry,
-                '{http://schemas.google.com/apps/2006}property',
+                "{http://schemas.google.com/apps/2006}property",
                 name=construct.key,
                 value=str(construct.value),
             )

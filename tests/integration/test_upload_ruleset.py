@@ -1,11 +1,8 @@
 from gmail_yaml_filters import upload
 from gmail_yaml_filters.ruleset import RuleSet
 
-
 empty_ruleset = RuleSet.from_object([])
-dummy_ruleset = RuleSet.from_object([
-    {'from': 'anyone', 'archive': True}
-])
+dummy_ruleset = RuleSet.from_object([{"from": "anyone", "archive": True}])
 
 
 create_tag = "Creating"
