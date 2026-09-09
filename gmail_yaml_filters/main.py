@@ -178,7 +178,7 @@ def main():
             continue_on_http_error=args.ignore_errors,
         )
     else:
-        raise argparse.ArgumentError("%r not recognized" % args.action)
+        raise argparse.ArgumentError(args.action, "not recognized")
 
 
 if __name__ == "__main__":

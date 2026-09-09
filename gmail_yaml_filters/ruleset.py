@@ -8,11 +8,58 @@ from datetime import date, datetime
 from functools import total_ordering
 from itertools import chain
 from operator import attrgetter
+from typing import Any, Callable, Literal, Mapping, TypeAlias, TypeVar, cast
 
 from lxml import etree
 
+ConditionKey: TypeAlias = Literal[
+    "from",
+    "to",
+    "subject",
+    "has",
+    "match",
+    "does_not_have",
+    "missing",
+    "no_match",
+    "after",
+    "bcc",
+    "before",
+    "category",
+    "cc",
+    "deliveredto",
+    "filename",
+    "in",
+    "is",
+    "labeled",
+    "larger",
+    "list",
+    "newer_than",
+    "older_than",
+    "rfc822msgid",
+    "size",
+    "smaller",
+]
+ConditionValue: TypeAlias = Any
+ConditionTuple: TypeAlias = tuple[ConditionKey, ConditionValue]
 
-def quote_value_if_necessary(value):
+NativeConditionKey: TypeAlias = Literal[
+    "from", "to", "subject", "hasTheWord", "doesNotHaveTheWord"
+]
+NativeConditionValue: TypeAlias = str
+NativeConditionTuple: TypeAlias = tuple[NativeConditionKey, NativeConditionValue]
+
+ConditionFormatter: TypeAlias = Callable[
+    [ConditionKey, ConditionValue], NativeConditionTuple
+]
+IdentifierMap: TypeAlias = Mapping[str, str]
+FormatterMap: TypeAlias = Mapping[
+    ConditionKey, ConditionFormatter | NativeConditionTuple
+]
+
+T = TypeVar("T")
+
+
+def quote_value_if_necessary(value: T) -> T:
     """
     >>> quote_value_if_necessary({})
     {}
@@ -42,7 +89,7 @@ def quote_value_if_necessary(value):
         and not value.startswith("-")
         and not (value.startswith("(") and value.endswith(")"))
     ):
-        return '"{0}"'.format(value)
+        return cast(T, '"{0}"'.format(value))
     return value
 
 
@@ -57,10 +104,10 @@ class InvalidRuleType(ValueError):
 @total_ordering
 class _RuleConstruction(object):
     #: Maps kwargs and YAML keys to Google values
-    identifier_map = None
+    identifier_map: IdentifierMap = {}
 
     #: Maps special keys to functions of the signature (key, value) => (key, value)
-    formatter_map = {}
+    formatter_map: FormatterMap = {}
 
     def __init__(self, key, value, validate_value=True):
         key, value = self.remap_key_and_value(key, value)
@@ -75,7 +122,9 @@ class _RuleConstruction(object):
         return self._value
 
     @classmethod
-    def remap_key_and_value(cls, key, value):
+    def remap_key_and_value(
+        cls, key: ConditionKey, value: ConditionValue
+    ) -> ConditionTuple | NativeConditionTuple:
         if key in cls.formatter_map:
             converter = cls.formatter_map[key]
             return converter(key, value) if callable(converter) else converter
@@ -117,8 +166,10 @@ class _RuleConstruction(object):
         )
 
 
-def _format_has_shortcuts(key, value):
-    if key == "has" and value in (
+def _format_has_shortcuts(
+    key: ConditionKey, value: ConditionValue
+) -> NativeConditionTuple:
+    if value in (
         "attachment",
         "document",
         "drive",
@@ -130,12 +181,12 @@ def _format_has_shortcuts(key, value):
     ):
         return ("hasTheWord", "has:{}".format(value))
     else:
-        return (key, value)
+        return ("hasTheWord", value)
 
 
-def _search_operator(keyword, wrap=True):
-    def formatter(key, value):
-        condition = "hasTheWord"
+def _search_operator(keyword: str, wrap: bool = True) -> ConditionFormatter:
+    def formatter(key: ConditionKey, value: ConditionValue) -> NativeConditionTuple:
+        condition: NativeConditionKey = "hasTheWord"
         if value and value[0] == "-":
             condition = "doesNotHaveTheWord"
             value = value[1:]

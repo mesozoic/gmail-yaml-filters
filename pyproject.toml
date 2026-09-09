@@ -21,6 +21,22 @@ PyYAML = "^6.0"
 [tool.poetry.scripts]
 gmail-yaml-filters = "gmail_yaml_filters.main:main"
 
+[dependency-groups]
+dev = [
+    "coverage",
+    "google-api-python-client-stubs>=1.29.0,<2",
+    "lxml-stubs>=0.5.1,<0.6",
+    "mock>=5.2.0,<6",
+    "mypy>=1.16.0,<2",
+    "pytest>=9.0.3,<10",
+    "types-httplib2>=0.22.0.20250516,<0.23",
+    "types-pyyaml>=6.0.12.20250516,<7",
+]
+
+[[tool.mypy.overrides]]
+module = "oauth2client.*"
+ignore_missing_imports = true
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
