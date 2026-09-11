@@ -10,6 +10,7 @@ from gmail_yaml_filters.upload import (
     GmailFilters,
     GmailLabels,
     fake_label,
+    prune_filters_not_in_ruleset,
     prune_labels_not_in_ruleset,
     upload_ruleset,
 )
@@ -60,14 +61,17 @@ def test_fake_labels(fake_gmail):
 
 
 def test_filters(fake_gmail):
-    GmailFilters(fake_gmail)
+    filters = GmailFilters(fake_gmail)
+    assert filters.exists(fake_gmail.fake_filters[0])
+    assert not filters.exists(fake_gmail_filter("three"))
 
 
 def test_remote_filters_without_action(fake_gmail):
     # see https://github.com/mesozoic/gmail-yaml-filters/issues/5
     for fake_filter in fake_gmail.fake_filters:
         del fake_filter["action"]
-    GmailFilters(fake_gmail)
+    filters = GmailFilters(fake_gmail)
+    assert filters.exists(fake_gmail.fake_filters[0])
 
 
 def test_upload_excludes_non_publishable(fake_gmail):
@@ -87,6 +91,16 @@ def test_upload_excludes_non_publishable(fake_gmail):
             "action": {"removeLabelIds": ["FakeLabel_INBOX"]},
         },
     }
+    # Once the filter exists remotely, re-uploading must not create a duplicate
+    fake_gmail.fake_filters.append(
+        {
+            "id": "fake_gmail_filter_new",
+            "criteria": {"from": "alice"},
+            "action": {"removeLabelIds": ["FakeLabel_INBOX"]},
+        }
+    )
+    upload_ruleset(ruleset, fake_gmail)
+    assert fake_gmail.users().settings().filters().create.call_count == 1
 
 
 def test_upload_forward(fake_gmail):
@@ -100,6 +114,16 @@ def test_upload_forward(fake_gmail):
             "action": {"forward": "bob"},
         },
     }
+
+
+def test_prune_filters_not_in_ruleset(fake_gmail):
+    ruleset = RuleSet.from_object([{"from": "alice", "archive": True}])
+    prune_filters_not_in_ruleset(ruleset, fake_gmail)
+    deleted_ids = {
+        call[1]["id"]
+        for call in fake_gmail.users().settings().filters().delete.call_args_list
+    }
+    assert deleted_ids == {"fake_gmail_filter_one", "fake_gmail_filter_two"}
 
 
 def test_prune_labels_not_in_ruleset(fake_gmail):
@@ -137,3 +161,12 @@ def test_prune_labels_not_in_ruleset_continue_on_http_error(fake_gmail):
 
     prune_labels_not_in_ruleset(ruleset, fake_gmail, continue_on_http_error=True)
     assert fake_gmail.users().labels().delete().execute.call_count == 2
+
+
+def test_upload_dry_run(fake_gmail):
+    ruleset = RuleSet.from_object([{"from": "alice", "archive": True}])
+    upload_ruleset(ruleset, fake_gmail, dry_run=True)
+    # dry_run builds the create request but must not execute it
+    create = fake_gmail.users().settings().filters().create
+    assert create.call_count == 1
+    assert create.return_value.execute.call_count == 0
