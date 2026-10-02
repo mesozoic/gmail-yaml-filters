@@ -12,7 +12,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 google-api-python-client = "^2.40.0"
 lxml = "^6.1.0"
 oauth2client = "^4.1.3"
