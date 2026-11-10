@@ -143,6 +143,10 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    for rule in data:
+        if not isinstance(rule, dict):
+            parser.error("Invalid rule {!r}: each rule must be a mapping".format(rule))
+
     ruleset = RuleSet.from_object(rule for rule in data if not rule.get("ignore"))
 
     if not args.client_secret:
